@@ -1,0 +1,9 @@
+TestCaseID,PatientRef,ProviderRef,AppointmentDate,AppointmentTime,AppointmentType,ReasonForVisit,DurationMinutes,IsTelemedicine
+TC_APT_001,TC_PAT_001,TC_PRV_001,2026-07-15,09:30,Consultation,Initial cardiac evaluation for hypertension,45,FALSE
+TC_APT_002,TC_PAT_002,TC_PRV_002,2026-07-16,10:00,Follow-up,Three-month diabetes management review,30,FALSE
+TC_APT_003,TC_PAT_003,TC_PRV_003,2026-07-17,14:00,Consultation,Annual physical and asthma management,60,FALSE
+TC_APT_004,TC_PAT_004,TC_PRV_007,2026-07-18,11:30,Consultation,Thyroid function assessment and medication review,45,FALSE
+TC_APT_005,TC_PAT_005,TC_PRV_002,2026-07-19,15:00,Follow-up,Anxiety medication follow-up and CBT progress,30,TRUE
+TC_APT_006,TC_PAT_006,TC_PRV_003,2026-07-22,08:30,Consultation,Migraine treatment evaluation and prevention plan,45,FALSE
+TC_APT_007,TC_PAT_007,TC_PRV_002,2026-07-23,13:00,Follow-up,GERD management and dietary review,30,TRUE
+TC_APT_008,TC_PAT_008,TC_PRV_005,2026-07-24,10:30,Consultation,Fibromyalgia neurological assessment,60,FALSE
