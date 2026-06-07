@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Search, Loader2, AlertCircle, Download, Ticket,
   Layers, Flag, Activity, GitBranch, Sparkles
@@ -125,7 +126,7 @@ export default function Generate() {
           </div>
 
           <article className="strategy-output">
-            <ReactMarkdown>{result.casesMarkdown}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.casesMarkdown}</ReactMarkdown>
           </article>
         </>
       )}

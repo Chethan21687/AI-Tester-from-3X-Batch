@@ -14,8 +14,11 @@ const DEFAULTS = {
   groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
 };
 
+// Vercel's runtime filesystem is read-only — settings there come from env vars only.
+const READ_ONLY = Boolean(process.env.VERCEL);
+
 export function loadSettings() {
-  if (!existsSync(SETTINGS_PATH)) return { ...DEFAULTS };
+  if (READ_ONLY || !existsSync(SETTINGS_PATH)) return { ...DEFAULTS };
   try {
     const raw = JSON.parse(readFileSync(SETTINGS_PATH, 'utf-8'));
     return { ...DEFAULTS, ...raw };
@@ -27,8 +30,13 @@ export function loadSettings() {
 export function saveSettings(partial) {
   const current = loadSettings();
   const merged = { ...current, ...partial };
+  if (READ_ONLY) return merged;
   writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2), 'utf-8');
   return merged;
+}
+
+export function isReadOnly() {
+  return READ_ONLY;
 }
 
 export function maskSecret(value) {
@@ -43,6 +51,8 @@ export function maskedSettings(settings) {
     jiraToken: settings.jiraToken ? maskSecret(settings.jiraToken) : '',
     groqApiKey: settings.groqApiKey ? maskSecret(settings.groqApiKey) : '',
     jiraTokenSet: Boolean(settings.jiraToken),
-    groqApiKeySet: Boolean(settings.groqApiKey)
+    groqApiKeySet: Boolean(settings.groqApiKey),
+    readOnly: READ_ONLY,
+    note: READ_ONLY ? 'Settings are configured via environment variables on this deployment and cannot be changed here.' : undefined
   };
 }
