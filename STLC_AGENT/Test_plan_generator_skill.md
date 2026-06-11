@@ -1,0 +1,4 @@
+create test plan from the provided requirement document and testplan should be in PDF format it must downloadable .The test plan should be more professional as per the Industry standarads.
+From the created test plan generate atleast 20-30 testcases in csv format,but if asked it should be converted to excel as well.it should cover functional,Integration,system,security,regression,accessability scenarios using RICEPOT Framework.The testcases should be more professional like 15 YOE lead engineer had written.
+From these testcases generate playwright scripts using python with HTML Reports,data class,oops concepts,pandas it should be compatible only with chromium
+Ask me for any confirmation while executing dont Halucinate it
