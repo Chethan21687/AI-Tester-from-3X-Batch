@@ -1,0 +1,4 @@
+# Excel lock files
+~$*.xlsx
+# Superseded flat export (replaced by 02_VWO_TestCases_Detailed.xlsx)
+02_VWO_TestCases.xlsx
