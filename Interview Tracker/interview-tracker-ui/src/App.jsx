@@ -44,7 +44,7 @@ export default function App() {
       const matchFilter = !filter.key || (c[filter.key] || '') === filter.value
       if (!q) return matchFilter
       const hay = ALL_FIELDS.map(f => c[f.key])
-        .concat([c.candId, c.reqId])
+        .concat([c.candId, c.reqId, c.name])
         .join(' ')
         .toLowerCase()
       return matchFilter && hay.includes(q)

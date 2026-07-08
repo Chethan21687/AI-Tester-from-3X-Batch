@@ -91,7 +91,8 @@ export const FIELD_GROUPS = [
   {
     title: 'Candidate & Contact',
     fields: [
-      { key: 'name', label: 'Candidate Name', type: 'text', required: true },
+      { key: 'firstName', label: 'First Name', type: 'text', required: true },
+      { key: 'lastName', label: 'Last Name', type: 'text' },
       { key: 'email', label: 'Email', type: 'email', required: true },
       { key: 'phone', label: 'Phone', type: 'tel' },
       { key: 'location', label: 'Location (Current)', type: 'text' },
@@ -193,6 +194,24 @@ export function generateIds(rec, list) {
   return out
 }
 
+// --- name & date helpers ---------------------------------------------------
+const pad = n => String(n).padStart(2, '0')
+export function todayISO(offsetDays = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+// First token -> firstName, remainder -> lastName.
+export function splitName(full) {
+  const parts = String(full || '').trim().split(/\s+/).filter(Boolean)
+  return { firstName: parts[0] || '', lastName: parts.slice(1).join(' ') }
+}
+// Keep the legacy single `name` field in sync from firstName + lastName.
+export function composeName(rec) {
+  const name = [rec.firstName, rec.lastName].filter(Boolean).join(' ').trim()
+  return { ...rec, name: name || rec.name || '' }
+}
+
 export function emptyCandidate() {
   const base = {
     reqStatus: 'Open',
@@ -200,7 +219,12 @@ export function emptyCandidate() {
     willingRelocate: 'Yes',
     source: 'Naukri',
     interviewMode: '',
-    lastRoundOutcome: ''
+    lastRoundOutcome: '',
+    name: '',
+    // Sensible date defaults on a fresh candidate.
+    dateSourced: todayISO(),
+    dateSubmitted: todayISO(),
+    earliestJoining: todayISO(15)
   }
   ALL_FIELDS.forEach(f => { if (!(f.key in base)) base[f.key] = '' })
   return base

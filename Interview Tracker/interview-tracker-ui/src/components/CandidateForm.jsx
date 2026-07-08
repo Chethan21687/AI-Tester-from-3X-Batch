@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FIELD_GROUPS, ALL_FIELDS, emptyCandidate, coerceDates } from '../config/fields.js'
+import { FIELD_GROUPS, ALL_FIELDS, emptyCandidate, coerceDates, splitName, composeName } from '../config/fields.js'
 import { parseResume, validateResumeFile, RESUME_ACCEPT } from '../utils/parseResume.js'
 
 const REQUIRED = ALL_FIELDS.filter(f => f.required)
@@ -14,7 +14,14 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
   const resumeRef = useRef(null)
 
   useEffect(() => {
-    setForm(initial ? coerceDates({ ...emptyCandidate(), ...initial }) : emptyCandidate())
+    if (initial) {
+      const rec = coerceDates({ ...emptyCandidate(), ...initial })
+      // Legacy records only have `name` — derive First/Last for the split fields.
+      if (!rec.firstName && rec.name) Object.assign(rec, splitName(rec.name))
+      setForm(rec)
+    } else {
+      setForm(emptyCandidate())
+    }
     setErrors({}); setResume(null); setPopup(null)
   }, [initial])
 
@@ -40,6 +47,8 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
     setResume({ busy: true, text: `Uploading & parsing "${file.name}"…` })
     try {
       const found = await parseResume(file)
+      // Map the parsed full name onto the First/Last fields.
+      if (found.name) { Object.assign(found, splitName(found.name)); delete found.name }
       const keys = Object.keys(found)
       if (!keys.length) {
         setResume({ type: 'warn', text: `⚠ "${file.name}" uploaded, but no details could be read from it. Enter fields manually.` })
@@ -75,7 +84,7 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
       })
       return
     }
-    onSave({ ...form, id: form.id || 'c-' + Date.now() })
+    onSave(composeName({ ...form, id: form.id || 'c-' + Date.now() }))
   }
 
   return (
