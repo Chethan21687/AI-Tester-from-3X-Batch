@@ -36,21 +36,25 @@ function Breakdown({ title, data, fieldKey, onPick, colored }) {
   )
 }
 
-export default function Dashboard({ candidates, onSelect }) {
+export default function Dashboard({ candidates, onSelect, onTile }) {
   const total = candidates.length
+  const isInterview = c => /scheduled|tbs|yet to schedule/i.test(c.status || '')
+  const isRejected = c => /reject|drop-out|duplicate/i.test(c.status || '')
   const submitted = candidates.filter(c => c.status === 'Submit to Client').length
-  const inInterview = candidates.filter(c => /scheduled|tbs|yet to schedule/i.test(c.status || '')).length
+  const inInterview = candidates.filter(isInterview).length
   const joined = candidates.filter(c => c.status === 'Joined').length
-  const rejected = candidates.filter(c => /reject|drop-out|duplicate/i.test(c.status || '')).length
+  const rejected = candidates.filter(isRejected).length
   const openReqs = new Set(candidates.filter(c => c.reqStatus !== 'Closed').map(c => c.reqId)).size
 
+  // Each tile carries the predicate its count is derived from, so clicking it
+  // opens the candidate list filtered to exactly those records.
   const tiles = [
-    { label: 'Candidates', value: total },
-    { label: 'Open Requirements', value: openReqs },
-    { label: 'Submitted', value: submitted },
-    { label: 'In Interview', value: inInterview },
-    { label: 'Joined', value: joined },
-    { label: 'Rejected / Dropped', value: rejected }
+    { label: 'Candidates', value: total, test: () => true },
+    { label: 'Open Requirements', value: openReqs, test: c => c.reqStatus !== 'Closed' },
+    { label: 'Submitted', value: submitted, test: c => c.status === 'Submit to Client' },
+    { label: 'In Interview', value: inInterview, test: isInterview },
+    { label: 'Joined', value: joined, test: c => c.status === 'Joined' },
+    { label: 'Rejected / Dropped', value: rejected, test: isRejected }
   ]
 
   const upcoming = candidates
@@ -61,10 +65,15 @@ export default function Dashboard({ candidates, onSelect }) {
     <div className="dashboard">
       <div className="stats">
         {tiles.map(t => (
-          <div className="stat" key={t.label}>
+          <button
+            className="stat stat-link"
+            key={t.label}
+            onClick={() => onTile && onTile({ label: t.label, test: t.test })}
+            title={`View ${t.value} — ${t.label}`}
+          >
             <div className="stat-value">{t.value}</div>
             <div className="stat-label">{t.label}</div>
-          </div>
+          </button>
         ))}
       </div>
 

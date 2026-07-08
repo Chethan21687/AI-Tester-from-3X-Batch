@@ -134,6 +134,10 @@ body::after {
 /* Stats */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
 .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; text-align: center; }
+.stat-link { cursor: pointer; font: inherit; color: inherit; transition: transform .12s, border-color .15s, box-shadow .15s; }
+.stat-link:hover { border-color: var(--brand-2); transform: translateY(-3px); box-shadow: 0 10px 24px -10px rgba(99,102,241,.5); }
+.stat-link:hover .stat-value { text-decoration: underline; text-underline-offset: 3px; }
+.stat-link:active { transform: translateY(0); }
 .stat-value { font-size: 28px; font-weight: 700; color: var(--brand-2); }
 .stat-label { color: var(--muted); font-size: 12px; margin-top: 4px; }
 

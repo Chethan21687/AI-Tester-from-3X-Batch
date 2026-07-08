@@ -1,6 +1,7 @@
 // Parse a single candidate resume (PDF / DOCX-as-text / TXT) and pull out the
 // basic details so the Add/Edit form can be auto-populated instead of typed by
 // hand. Best-effort heuristics — anything not found is simply left blank.
+import JSZip from 'jszip'
 
 // --- text extraction -------------------------------------------------------
 
@@ -32,7 +33,6 @@ async function pdfToText(file) {
 // DOCX is a ZIP of XML — read word/document.xml and strip the tags so the
 // heuristics get clean text (raw file.text() on a .docx is binary garbage).
 async function docxToText(file) {
-  const JSZip = (await import('jszip')).default
   const zip = await JSZip.loadAsync(await file.arrayBuffer())
   const doc = zip.file('word/document.xml')
   if (!doc) throw new Error('not a valid Word document')
