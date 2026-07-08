@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { sampleCandidates } from './data/sampleCandidates.js'
 import { CANDIDATE_STATUS, ALL_FIELDS, normalizeStatus, normalizeRecruiter, generateIds } from './config/fields.js'
 import { exportExcel, mailtoSummary, openTeamsShare } from './utils/share.js'
+import { fetchCandidates, saveCandidates } from './utils/store.js'
 import Dashboard from './components/Dashboard.jsx'
 import CandidateForm from './components/CandidateForm.jsx'
 import CandidateTable from './components/CandidateTable.jsx'
@@ -20,10 +21,12 @@ export default function App() {
   const [user, setUser] = useState(() => getSession())
   const signOut = () => { logout(); setUser(null) }
 
+  // Seed initial paint from the offline cache; the shared store loads next.
   const [candidates, setCandidates] = useState(() => {
     const saved = localStorage.getItem(STORE_KEY)
     return migrate(saved ? JSON.parse(saved) : sampleCandidates)
   })
+  const [loaded, setLoaded] = useState(false)
   const [tab, setTab] = useState('dashboard')
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -32,9 +35,33 @@ export default function App() {
   const [filter, setFilter] = useState({ key: '', value: '' })
   const labelFor = key => (ALL_FIELDS.find(f => f.key === key) || {}).label || key
 
+  // Load the shared dataset once so all users see the same list/counts.
+  // If the shared store is empty, seed it from the samples a single time.
+  useEffect(() => {
+    let alive = true
+    fetchCandidates()
+      .then(list => {
+        if (!alive) return
+        if (list.length) {
+          setCandidates(migrate(list))
+        } else {
+          setCandidates(migrate(sampleCandidates))
+          saveCandidates(sampleCandidates).catch(() => {})
+        }
+      })
+      .catch(() => {}) // offline: keep the cached list
+      .finally(() => { if (alive) setLoaded(true) })
+    return () => { alive = false }
+  }, [])
+
+  // Persist: cache locally immediately, push to the shared store (debounced)
+  // once the initial load has completed so we never overwrite it prematurely.
   useEffect(() => {
     localStorage.setItem(STORE_KEY, JSON.stringify(candidates))
-  }, [candidates])
+    if (!loaded) return
+    const t = setTimeout(() => { saveCandidates(candidates).catch(() => {}) }, 600)
+    return () => clearTimeout(t)
+  }, [candidates, loaded])
 
   // Search scans EVERY field so any detail of any candidate (incl. newly
   // added ones, which live in the same list) is findable.
