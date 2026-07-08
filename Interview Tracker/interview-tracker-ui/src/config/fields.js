@@ -81,10 +81,9 @@ export function normalizeRecruiter(v) {
 // Column groups drive the Add/Edit form. `type` selects the widget.
 export const FIELD_GROUPS = [
   {
+    // Cand ID / Req ID are auto-generated on save (see generateIds) — not shown.
     title: 'Identifiers',
     fields: [
-      { key: 'candId', label: 'Cand ID', type: 'text' },
-      { key: 'reqId', label: 'Req ID', type: 'text' },
       { key: 'client', label: 'Client', type: 'text' },
       { key: 'reqStatus', label: 'Requirement Status', type: 'select', options: REQ_STATUS }
     ]
@@ -113,8 +112,8 @@ export const FIELD_GROUPS = [
     fields: [
       { key: 'source', label: 'Source', type: 'select', options: SOURCE },
       { key: 'recruiter', label: 'Source Detail / Recruiter', type: 'select', options: ['', ...RECRUITERS] },
-      { key: 'dateSourced', label: 'Date Sourced', type: 'text' },
-      { key: 'dateSubmitted', label: 'Date Submitted', type: 'text' }
+      { key: 'dateSourced', label: 'Date Sourced', type: 'date' },
+      { key: 'dateSubmitted', label: 'Date Submitted', type: 'date' }
     ]
   },
   {
@@ -124,7 +123,7 @@ export const FIELD_GROUPS = [
       { key: 'expectedCTC', label: 'Expected CTC', type: 'text' },
       { key: 'offeredCTC', label: 'Offered CTC', type: 'text' },
       { key: 'rateUnit', label: 'Rate Unit', type: 'text' },
-      { key: 'earliestJoining', label: 'Earliest Joining Date', type: 'text' }
+      { key: 'earliestJoining', label: 'Earliest Joining Date', type: 'date' }
     ]
   },
   {
@@ -149,6 +148,50 @@ export const FIELD_GROUPS = [
 ]
 
 export const ALL_FIELDS = FIELD_GROUPS.flatMap(g => g.fields)
+
+// Native <input type="date"|"datetime-local"> only accept ISO values. Legacy
+// data holds free-text like "21st May 2026" / "2nd June", so coerce to ISO for
+// display in the calendar picker. Returns '' when it can't be parsed.
+export function toISODate(v, withTime = false) {
+  if (!v) return ''
+  const s = String(v).trim()
+  // Already ISO (yyyy-mm-dd or yyyy-mm-ddThh:mm) — keep as-is.
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return withTime ? s.slice(0, 16) : s.slice(0, 10)
+  const cleaned = s.replace(/(\d+)(st|nd|rd|th)/gi, '$1')
+  const d = new Date(cleaned.match(/\d{4}/) ? cleaned : cleaned + ' ' + new Date().getFullYear())
+  if (isNaN(d)) return ''
+  const pad = n => String(n).padStart(2, '0')
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return withTime ? `${date}T${pad(d.getHours())}:${pad(d.getMinutes())}` : date
+}
+
+const DATE_FIELD_TYPES = { date: false, 'datetime-local': true }
+// Coerce every date-typed field on a candidate record to ISO for the form.
+export function coerceDates(rec) {
+  const out = { ...rec }
+  ALL_FIELDS.forEach(f => {
+    if (f.type in DATE_FIELD_TYPES && out[f.key]) {
+      out[f.key] = toISODate(out[f.key], DATE_FIELD_TYPES[f.type])
+    }
+  })
+  return out
+}
+
+// Auto-generate Cand ID / Req ID (e.g. CAND-0007) using the max existing
+// number in the list so IDs stay unique even after deletes. Only fills blanks.
+function nextNum(list, key, prefix) {
+  const max = list.reduce((m, c) => {
+    const n = parseInt(String(c[key] || '').replace(new RegExp('^' + prefix + '-?', 'i'), ''), 10)
+    return Number.isFinite(n) && n > m ? n : m
+  }, 0)
+  return `${prefix}-${String(max + 1).padStart(4, '0')}`
+}
+export function generateIds(rec, list) {
+  const out = { ...rec }
+  if (!out.candId) out.candId = nextNum(list, 'candId', 'CAND')
+  if (!out.reqId) out.reqId = nextNum(list, 'reqId', 'REQ')
+  return out
+}
 
 export function emptyCandidate() {
   const base = {

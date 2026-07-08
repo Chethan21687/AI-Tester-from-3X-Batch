@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
 import { sampleCandidates } from './data/sampleCandidates.js'
-import { CANDIDATE_STATUS, ALL_FIELDS, normalizeStatus, normalizeRecruiter } from './config/fields.js'
+import { CANDIDATE_STATUS, ALL_FIELDS, normalizeStatus, normalizeRecruiter, generateIds } from './config/fields.js'
 import { exportExcel, mailtoSummary, openTeamsShare } from './utils/share.js'
 import Dashboard from './components/Dashboard.jsx'
 import CandidateForm from './components/CandidateForm.jsx'
 import CandidateTable from './components/CandidateTable.jsx'
 import FileUpload from './components/FileUpload.jsx'
+import AuthScreen from './components/AuthScreen.jsx'
+import { getSession, logout } from './config/auth.js'
 
 const STORE_KEY = 'interview-tracker-candidates'
 const migrate = list => list.map(c => ({
@@ -15,6 +17,9 @@ const migrate = list => list.map(c => ({
 }))
 
 export default function App() {
+  const [user, setUser] = useState(() => getSession())
+  const signOut = () => { logout(); setUser(null) }
+
   const [candidates, setCandidates] = useState(() => {
     const saved = localStorage.getItem(STORE_KEY)
     return migrate(saved ? JSON.parse(saved) : sampleCandidates)
@@ -47,8 +52,9 @@ export default function App() {
   }, [candidates, search, filter])
 
   const saveCandidate = c => {
-    const rec = { ...c, status: normalizeStatus(c.status) }
     setCandidates(prev => {
+      // Auto-fill Cand ID / Req ID for new candidates before inserting.
+      const rec = generateIds({ ...c, status: normalizeStatus(c.status) }, prev)
       const exists = prev.some(p => p.id === rec.id)
       return exists ? prev.map(p => (p.id === rec.id ? rec : p)) : [rec, ...prev]
     })
@@ -71,6 +77,9 @@ export default function App() {
   const openFilter = (key, value) => { setFilter({ key, value }); setSearch(''); setTab('candidates') }
   const clearAll = () => { setSearch(''); setFilter({ key: '', value: '' }) }
 
+  // Auth gate: unauthenticated users only see the login / register screen.
+  if (!user) return <AuthScreen onAuthed={setUser} />
+
   return (
     <div className="app">
       <header className="topbar">
@@ -79,18 +88,25 @@ export default function App() {
           <p className="sub">Candidates — Submission Log · pipeline dashboard &amp; sharing</p>
         </div>
         <div className="topbar-actions">
-          <button className="btn primary" onClick={startAdd}>+ Add</button>
-          <button className="btn" onClick={() => exportExcel(candidates)}>⬇ Export Excel</button>
-          <button className="btn" onClick={() => { window.location.href = mailtoSummary(candidates) }}>✉ Mail</button>
-          <button className="btn" onClick={() => openTeamsShare(candidates)}>Teams</button>
-          <button className="btn ghost" onClick={resetSeed}>Reset</button>
+          <button className="icon-btn primary" onClick={startAdd} title="Add" aria-label="Add">➕</button>
+          <button className="icon-btn" onClick={() => exportExcel(candidates)} title="Export to Excel" aria-label="Export to Excel">📊</button>
+          <button className="icon-btn" onClick={() => { window.location.href = mailtoSummary(candidates) }} title="Mail" aria-label="Mail">✉️</button>
+          <button className="icon-btn" onClick={() => openTeamsShare(candidates)} title="Teams" aria-label="Teams">👥</button>
+          <button className="icon-btn ghost" onClick={resetSeed} title="Reset" aria-label="Reset">🔄</button>
+          <span className="user-chip" title={user.email}>
+            {user.picture
+              ? <img src={user.picture} alt="" className="user-avatar" />
+              : <span className="user-avatar fallback">{(user.name || user.email || '?').charAt(0).toUpperCase()}</span>}
+            <b>{user.name || user.email}</b>
+          </span>
+          <button className="icon-btn ghost" onClick={signOut} title="Log out" aria-label="Log out">🚪</button>
         </div>
       </header>
 
       <nav className="tabs">
         <button className={tab === 'dashboard' ? 'tab on' : 'tab'} onClick={() => setTab('dashboard')}>Dashboard</button>
         <button className={tab === 'candidates' ? 'tab on' : 'tab'} onClick={() => setTab('candidates')}>Candidates ({candidates.length})</button>
-        <button className={tab === 'import' ? 'tab on' : 'tab'} onClick={() => setTab('import')}>Import</button>
+        <button className={tab === 'import' ? 'tab on icon-tab' : 'tab icon-tab'} onClick={() => setTab('import')} title="Import" aria-label="Import">📥</button>
       </nav>
 
       {showForm && (
