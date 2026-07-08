@@ -131,7 +131,10 @@ export const FIELD_GROUPS = [
     title: 'Interview & Status',
     fields: [
       { key: 'status', label: 'Candidate Status', type: 'select', options: CANDIDATE_STATUS },
-      { key: 'interviewDate', label: 'Interview Scheduled Date', type: 'datetime-local' },
+      // Interview schedule split into date + time so any time (incl. next-day)
+      // is freely selectable; composed back into `interviewDate` on save.
+      { key: 'interviewDateOnly', label: 'Interview Date', type: 'date' },
+      { key: 'interviewTime', label: 'Interview Time', type: 'time' },
       { key: 'interviewMode', label: 'Interview Mode', type: 'select', options: INTERVIEW_MODE },
       { key: 'interviewDuration', label: 'Duration (min)', type: 'number' },
       { key: 'interviewsDone', label: '# Interviews Done', type: 'text' },
@@ -212,6 +215,27 @@ export function composeName(rec) {
   return { ...rec, name: name || rec.name || '' }
 }
 
+// Interview date/time <-> the canonical `interviewDate` datetime string.
+export function composeInterview(rec) {
+  const out = { ...rec }
+  if (out.interviewDateOnly) {
+    out.interviewDate = `${out.interviewDateOnly}T${out.interviewTime || '09:00'}`
+  } else {
+    out.interviewDate = ''
+  }
+  return out
+}
+export function splitInterview(rec) {
+  const out = { ...rec }
+  const v = String(out.interviewDate || '')
+  if (v.includes('T')) {
+    const [d, t] = v.split('T')
+    out.interviewDateOnly = d
+    out.interviewTime = (t || '').slice(0, 5)
+  }
+  return out
+}
+
 export function emptyCandidate() {
   const base = {
     reqStatus: 'Open',
@@ -221,6 +245,7 @@ export function emptyCandidate() {
     interviewMode: '',
     lastRoundOutcome: '',
     name: '',
+    interviewDate: '',
     // Sensible date defaults on a fresh candidate.
     dateSourced: todayISO(),
     dateSubmitted: todayISO(),

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FIELD_GROUPS, ALL_FIELDS, emptyCandidate, coerceDates, splitName, composeName } from '../config/fields.js'
+import { FIELD_GROUPS, ALL_FIELDS, emptyCandidate, coerceDates, splitName, composeName, composeInterview, splitInterview } from '../config/fields.js'
 import { parseResume, validateResumeFile, RESUME_ACCEPT } from '../utils/parseResume.js'
 
 const REQUIRED = ALL_FIELDS.filter(f => f.required)
@@ -15,7 +15,7 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
 
   useEffect(() => {
     if (initial) {
-      const rec = coerceDates({ ...emptyCandidate(), ...initial })
+      const rec = splitInterview(coerceDates({ ...emptyCandidate(), ...initial }))
       // Legacy records only have `name` — derive First/Last for the split fields.
       if (!rec.firstName && rec.name) Object.assign(rec, splitName(rec.name))
       setForm(rec)
@@ -84,7 +84,7 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
       })
       return
     }
-    onSave(composeName({ ...form, id: form.id || 'c-' + Date.now() }))
+    onSave(composeInterview(composeName({ ...form, id: form.id || 'c-' + Date.now() })))
   }
 
   return (

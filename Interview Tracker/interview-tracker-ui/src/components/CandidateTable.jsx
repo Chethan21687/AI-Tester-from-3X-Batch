@@ -16,12 +16,39 @@ const COLUMNS = [
   { key: 'expectedCTC', label: 'Exp CTC' },
   { key: 'offeredCTC', label: 'Offered' },
   { key: 'recruiter', label: 'Recruiter' },
+  { key: 'dateSourced', label: 'Date Sourced' },
   { key: 'reqStatus', label: 'Req Status', pill: true },
   { key: 'status', label: 'Status', pill: true },
   { key: 'interviewMode', label: 'Mode' },
   { key: 'interviewDuration', label: 'Dur' },
   { key: 'lastRoundOutcome', label: 'Outcome', pill: true }
 ]
+
+// Columns holding human-typed dates ("21st May 2026", "4th June 2026", …).
+const DATE_COLS = new Set(['dateSourced', 'dateSubmitted', 'interviewDate', 'earliestJoining'])
+
+// Parse a free-text date to a timestamp for chronological sorting (NaN if none).
+function parseDateish(v) {
+  if (!v) return NaN
+  const s = String(v).replace(/(\d+)(st|nd|rd|th)/gi, '$1').trim()
+  const d = new Date(s.match(/\d{4}/) ? s : `${s} ${new Date().getFullYear()}`)
+  return isNaN(d) ? NaN : d.getTime()
+}
+
+// Uniform date display (e.g. "21st May 2026") so ISO-stored and free-text dates
+// look the same in the table.
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'], v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+function formatDateCell(v) {
+  const t = parseDateish(v)
+  if (isNaN(t)) return v || '—'
+  const d = new Date(t)
+  return `${ordinal(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
 
 // Compare two cell values: numeric when both look numeric, else text.
 function compare(a, b) {
@@ -34,11 +61,23 @@ function compare(a, b) {
 }
 
 export default function CandidateTable({ candidates, onEdit, onDelete, onStatusChange }) {
-  const [sort, setSort] = useState({ key: '', dir: 1 })
+  // Default: newest sourced candidates first.
+  const [sort, setSort] = useState({ key: 'dateSourced', dir: -1 })
 
   const sorted = useMemo(() => {
     if (!sort.key) return candidates
-    return [...candidates].sort((x, y) => compare(x[sort.key], y[sort.key]) * sort.dir)
+    const isDate = DATE_COLS.has(sort.key)
+    return [...candidates].sort((x, y) => {
+      if (isDate) {
+        const tx = parseDateish(x[sort.key]), ty = parseDateish(y[sort.key])
+        // Blank/invalid dates always sort to the bottom regardless of direction.
+        if (isNaN(tx) && isNaN(ty)) return 0
+        if (isNaN(tx)) return 1
+        if (isNaN(ty)) return -1
+        return (tx - ty) * sort.dir
+      }
+      return compare(x[sort.key], y[sort.key]) * sort.dir
+    })
   }, [candidates, sort])
 
   const toggleSort = key =>
@@ -70,7 +109,9 @@ export default function CandidateTable({ candidates, onEdit, onDelete, onStatusC
                 <td key={col.key} className={col.key === 'email' ? '' : 'nowrap'}>
                   {col.pill
                     ? (c[col.key] ? <span className={statusClass(c[col.key])}>{c[col.key]}</span> : '—')
-                    : (c[col.key] || '—')}
+                    : DATE_COLS.has(col.key)
+                      ? formatDateCell(c[col.key])
+                      : (c[col.key] || '—')}
                 </td>
               ))}
               <td className="nowrap">

@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { sampleCandidates } from './data/sampleCandidates.js'
-import { CANDIDATE_STATUS, ALL_FIELDS, normalizeStatus, normalizeRecruiter, generateIds } from './config/fields.js'
+import { CANDIDATE_STATUS, ALL_FIELDS, normalizeStatus, normalizeRecruiter, generateIds, toISODate } from './config/fields.js'
 import { exportExcel, mailtoSummary, openTeamsShare } from './utils/share.js'
-import { fetchCandidates, saveCandidates } from './utils/store.js'
+import { fetchCandidates, saveCandidates, logDeletion } from './utils/store.js'
 import Dashboard from './components/Dashboard.jsx'
 import CandidateForm from './components/CandidateForm.jsx'
 import CandidateTable from './components/CandidateTable.jsx'
 import FileUpload from './components/FileUpload.jsx'
+import AuditLog from './components/AuditLog.jsx'
 
 const STORE_KEY = 'interview-tracker-candidates'
 const EMPTY_FILTER = { key: '', value: '', label: '', test: null }
@@ -34,6 +35,8 @@ export default function App() {
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
+  // Date-sourced calendar filter (ISO yyyy-mm-dd) — next to the search bar.
+  const [dateSourced, setDateSourced] = useState('')
   // Drill-down filter: exact field match {key,value} OR predicate {test,label}.
   const [filter, setFilter] = useState(EMPTY_FILTER)
   // Toast confirming DB writes: { type: 'ok'|'err'|'info', text }.
@@ -105,6 +108,8 @@ export default function App() {
       const matchFilter = filter.test
         ? filter.test(c)
         : (!filter.key || (c[filter.key] || '') === filter.value)
+      const matchDate = !dateSourced || toISODate(c.dateSourced) === dateSourced
+      if (!matchDate) return false
       if (!q) return matchFilter
       const hay = ALL_FIELDS.map(f => c[f.key])
         .concat([c.candId, c.reqId, c.name])
@@ -112,7 +117,7 @@ export default function App() {
         .toLowerCase()
       return matchFilter && hay.includes(q)
     })
-  }, [candidates, search, filter])
+  }, [candidates, search, filter, dateSourced])
 
   // Add/Edit a candidate. Awaits the DB write and confirms it so the user knows
   // the record was actually inserted into MongoDB (and is now searchable).
@@ -155,8 +160,13 @@ export default function App() {
     const who = c.name || c.firstName || 'Candidate'
     setNotice({ type: 'info', text: `Deleting "${who}"…` })
     try {
+      // Record the deletion in the audit trail first, then remove the record.
+      await logDeletion({
+        candId: c.candId, name: who, reason,
+        recruiter: c.recruiter || c.owner || '', client: c.client || '', status: c.status || ''
+      })
       await saveCandidates(next)
-      setNotice({ type: 'ok', text: `🗑️ "${who}" deleted. Reason: ${reason}` })
+      setNotice({ type: 'ok', text: `🗑️ "${who}" deleted and logged to audit trail. Reason: ${reason}` })
     } catch (e) {
       setNotice({ type: 'err', text: `❌ Could not delete "${who}": ${e.message}.` })
     }
@@ -174,7 +184,7 @@ export default function App() {
   const openFilter = (key, value) => { setFilter({ ...EMPTY_FILTER, key, value }); setSearch(''); goTab('candidates') }
   // Dashboard stat tile -> jump to candidate list filtered by a predicate.
   const openTile = ({ label, test }) => { setFilter({ ...EMPTY_FILTER, label, test }); setSearch(''); goTab('candidates') }
-  const clearAll = () => { setSearch(''); setFilter(EMPTY_FILTER) }
+  const clearAll = () => { setSearch(''); setFilter(EMPTY_FILTER); setDateSourced('') }
   const filterActive = filter.key || filter.test
 
   // Auto-dismiss success/info toasts (keep errors until clicked).
@@ -209,6 +219,7 @@ export default function App() {
         <button className={tab === 'dashboard' ? 'tab on' : 'tab'} onClick={() => goTab('dashboard')}>Dashboard</button>
         <button className={tab === 'candidates' ? 'tab on' : 'tab'} onClick={() => goTab('candidates')}>Candidates ({candidates.length})</button>
         <button className={tab === 'import' ? 'tab on icon-tab' : 'tab icon-tab'} onClick={() => goTab('import')} title="Import" aria-label="Import">📥</button>
+        <button className={tab === 'audit' ? 'tab on' : 'tab'} onClick={() => goTab('audit')} title="Deletion audit log">🧾 Audit</button>
       </nav>
 
       {showForm && (
@@ -220,11 +231,17 @@ export default function App() {
 
       {tab === 'import' && <FileUpload onImport={importCandidates} />}
 
+      {tab === 'audit' && <AuditLog />}
+
       {tab === 'candidates' && (
         <>
           <div className="card toolbar">
             <input className="search" placeholder="Search any detail — name, phone, email, client, req, CTC, notes…"
               value={search} onChange={e => setSearch(e.target.value)} />
+            <label className="date-filter" title="Filter by Date Sourced">
+              <span className="cal-ico" aria-hidden="true">📅</span>
+              <input type="date" value={dateSourced} onChange={e => setDateSourced(e.target.value)} />
+            </label>
             <select
               value={filter.key === 'status' ? filter.value : 'All'}
               onChange={e => setFilter(e.target.value === 'All' ? EMPTY_FILTER : { ...EMPTY_FILTER, key: 'status', value: e.target.value })}
@@ -237,7 +254,7 @@ export default function App() {
                 <button className="chip-x" title="Clear filter" onClick={() => setFilter(EMPTY_FILTER)}>✕</button>
               </span>
             )}
-            {(search || filterActive) && (
+            {(search || filterActive || dateSourced) && (
               <button className="btn ghost" onClick={clearAll}>Clear</button>
             )}
             <span className="count">{filtered.length} / {candidates.length}</span>
