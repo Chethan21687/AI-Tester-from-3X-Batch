@@ -23,57 +23,75 @@ export default function App() {
     return migrate(saved ? JSON.parse(saved) : sampleCandidates)
   })
   const [loaded, setLoaded] = useState(false)
-  // Set once the user edits anything, so a late initial fetch can't clobber it.
+  // dirtyRef: user has edited -> a late initial fetch must not clobber.
+  // canWriteRef: the initial load succeeded -> safe to write to the DB. A
+  // FAILED load keeps this false so we never overwrite the DB with stale data.
   const dirtyRef = useRef(false)
+  const canWriteRef = useRef(false)
+  const candidatesRef = useRef(candidates)
+  candidatesRef.current = candidates
   const [tab, setTab] = useState('dashboard')
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
   // Drill-down filter: exact field match {key,value} OR predicate {test,label}.
   const [filter, setFilter] = useState(EMPTY_FILTER)
+  // Toast confirming DB writes: { type: 'ok'|'err'|'info', text }.
+  const [notice, setNotice] = useState(null)
   const labelFor = key => (ALL_FIELDS.find(f => f.key === key) || {}).label || key
 
   // Mark dirty on every user mutation so the shared list is treated as ours.
   const mutate = updater => { dirtyRef.current = true; setCandidates(updater) }
 
   // Load the shared dataset once so all users see the same list/counts.
-  // Skip applying it if the user already edited (avoids clobbering local work).
   useEffect(() => {
     let alive = true
     fetchCandidates()
       .then(list => {
-        if (!alive || dirtyRef.current) return
+        if (!alive) return
+        canWriteRef.current = true              // load OK -> writes are now safe
+        if (dirtyRef.current) {
+          // User edited while the fetch was in flight: keep their data and
+          // push it, don't clobber with the just-fetched list.
+          saveCandidates(candidatesRef.current).catch(() => {})
+          return
+        }
         if (list.length) {
           setCandidates(migrate(list))
         } else {
-          setCandidates(migrate(sampleCandidates))
-          saveCandidates(sampleCandidates).catch(() => {})
+          const seed = migrate(sampleCandidates)  // empty DB -> seed once
+          setCandidates(seed)
+          saveCandidates(seed).catch(() => {})
         }
       })
-      .catch(() => {}) // offline: keep the cached list
+      .catch(() => {}) // load failed: stay on cached list, DB writes stay disabled
       .finally(() => { if (alive) setLoaded(true) })
     return () => { alive = false }
   }, [])
 
-  // Persist: cache locally immediately, push to the shared store (debounced)
-  // after the initial load so we never overwrite it prematurely.
+  // Offline cache (paint + resilience) — always safe, never touches the DB.
   useEffect(() => {
     localStorage.setItem(STORE_KEY, JSON.stringify(candidates))
-    if (!loaded) return
-    const t = setTimeout(() => { saveCandidates(candidates).catch(() => {}) }, 500)
+  }, [candidates])
+
+  // Persist to the DB ONLY for genuine user edits, and only once the initial
+  // load succeeded. Debounced so rapid edits collapse into one write.
+  useEffect(() => {
+    if (!dirtyRef.current || !canWriteRef.current) return
+    const t = setTimeout(() => { saveCandidates(candidatesRef.current).catch(() => {}) }, 400)
     return () => clearTimeout(t)
-  }, [candidates, loaded])
+  }, [candidates])
 
   // Flush pending edits on tab close / reload so nothing is lost mid-debounce.
   useEffect(() => {
     const flush = () => {
-      if (!dirtyRef.current || !navigator.sendBeacon) return
+      if (!dirtyRef.current || !canWriteRef.current || !navigator.sendBeacon) return
       navigator.sendBeacon('/api/candidates',
-        new Blob([JSON.stringify({ candidates })], { type: 'application/json' }))
+        new Blob([JSON.stringify({ candidates: candidatesRef.current })], { type: 'application/json' }))
     }
     window.addEventListener('beforeunload', flush)
     return () => window.removeEventListener('beforeunload', flush)
-  }, [candidates])
+  }, [])
 
   // Search scans EVERY field so any detail of any candidate (incl. newly
   // added ones, which live in the same list) is findable.
@@ -92,14 +110,27 @@ export default function App() {
     })
   }, [candidates, search, filter])
 
-  const saveCandidate = c => {
-    mutate(prev => {
-      // Auto-fill Cand ID / Req ID for new candidates before inserting.
-      const rec = generateIds({ ...c, status: normalizeStatus(c.status) }, prev)
-      const exists = prev.some(p => p.id === rec.id)
-      return exists ? prev.map(p => (p.id === rec.id ? rec : p)) : [rec, ...prev]
-    })
+  // Add/Edit a candidate. Awaits the DB write and confirms it so the user knows
+  // the record was actually inserted into MongoDB (and is now searchable).
+  const saveCandidate = async c => {
+    const prev = candidatesRef.current
+    // Auto-fill Cand ID / Req ID for new candidates before inserting.
+    const rec = generateIds({ ...c, status: normalizeStatus(c.status) }, prev)
+    const exists = prev.some(p => p.id === rec.id)
+    const next = exists ? prev.map(p => (p.id === rec.id ? rec : p)) : [rec, ...prev]
+
+    dirtyRef.current = true
+    candidatesRef.current = next
+    setCandidates(next)
     setShowForm(false); setEditing(null)
+    const who = rec.name || rec.firstName || 'Candidate'
+    setNotice({ type: 'info', text: `Saving "${who}" to database…` })
+    try {
+      await saveCandidates(next)               // <-- explicit, awaited DB insert
+      setNotice({ type: 'ok', text: `✅ "${who}" saved to database (${rec.candId}). It is now searchable across all users.` })
+    } catch (e) {
+      setNotice({ type: 'err', text: `❌ Could not save "${who}" to the database: ${e.message}. Change kept locally — retry when back online.` })
+    }
   }
   // Inline status change — auto-applied immediately (persists + refreshes dashboard).
   const updateStatus = (id, status) =>
@@ -121,8 +152,20 @@ export default function App() {
   const clearAll = () => { setSearch(''); setFilter(EMPTY_FILTER) }
   const filterActive = filter.key || filter.test
 
+  // Auto-dismiss success/info toasts (keep errors until clicked).
+  useEffect(() => {
+    if (!notice || notice.type === 'err') return
+    const t = setTimeout(() => setNotice(null), 4000)
+    return () => clearTimeout(t)
+  }, [notice])
+
   return (
     <div className="app">
+      {notice && (
+        <div className={`toast ${notice.type}`} role="status" onClick={() => setNotice(null)}>
+          {notice.text}
+        </div>
+      )}
       <header className="topbar">
         <div>
           <h1>Interview Tracker</h1>
