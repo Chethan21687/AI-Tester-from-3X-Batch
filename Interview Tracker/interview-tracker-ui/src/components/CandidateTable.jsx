@@ -90,8 +90,8 @@ export default function CandidateTable({ candidates, onEdit, onDelete, onStatusC
                   onClick={() => downloadICS(c)}>📅</button>
               </td>
               <td className="nowrap">
-                <button className="btn tiny" onClick={() => onEdit(c)}>Edit</button>
-                <button className="btn tiny bad" onClick={() => onDelete(c.id)}>Del</button>
+                <button className="icon-act edit" title="Edit candidate" aria-label="Edit candidate" onClick={() => onEdit(c)}>✏️</button>
+                <button className="icon-act del" title="Delete candidate" aria-label="Delete candidate" onClick={() => onDelete(c)}>🗑️</button>
               </td>
             </tr>
           ))}

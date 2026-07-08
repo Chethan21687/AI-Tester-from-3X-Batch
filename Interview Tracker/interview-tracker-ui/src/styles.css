@@ -232,6 +232,27 @@ input:focus, select:focus { outline: none; border-color: var(--brand); }
 .modal ul { text-align: left; margin: 0 0 16px; padding-left: 20px; color: var(--text); }
 .modal ul li { margin: 4px 0; }
 .modal .btn { width: 100%; }
+.modal-text { text-align: left; color: var(--text); margin: 0 0 12px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+.modal-actions .btn { width: 100%; }
+.reason-input {
+  width: 100%; resize: vertical; min-height: 68px;
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: inherit; font-size: 13px;
+}
+.reason-input:focus { outline: none; border-color: var(--brand); }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.danger:hover { background: #b91c1c; border-color: #b91c1c; }
+
+/* Row action icons (edit / delete) */
+.icon-act {
+  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  font-size: 15px; line-height: 1; padding: 4px 6px; cursor: pointer; margin-right: 2px;
+  transition: transform .1s, background .15s, border-color .15s;
+}
+.icon-act:hover { transform: translateY(-1px); }
+.icon-act.edit:hover { background: rgba(99,102,241,.12); border-color: var(--brand-2); }
+.icon-act.del:hover { background: rgba(239,68,68,.12); border-color: var(--bad); }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 

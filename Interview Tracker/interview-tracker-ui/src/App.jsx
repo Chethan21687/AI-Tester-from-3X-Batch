@@ -38,6 +38,10 @@ export default function App() {
   const [filter, setFilter] = useState(EMPTY_FILTER)
   // Toast confirming DB writes: { type: 'ok'|'err'|'info', text }.
   const [notice, setNotice] = useState(null)
+  // Delete flow: candidate pending deletion + the recruiter's reason.
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleteErr, setDeleteErr] = useState('')
   const labelFor = key => (ALL_FIELDS.find(f => f.key === key) || {}).label || key
 
   // Mark dirty on every user mutation so the shared list is treated as ours.
@@ -124,10 +128,11 @@ export default function App() {
     setCandidates(next)
     setShowForm(false); setEditing(null)
     const who = rec.name || rec.firstName || 'Candidate'
-    setNotice({ type: 'info', text: `Saving "${who}" to database…` })
+    const verb = exists ? 'updated in' : 'saved to'
+    setNotice({ type: 'info', text: `${exists ? 'Updating' : 'Saving'} "${who}"…` })
     try {
-      await saveCandidates(next)               // <-- explicit, awaited DB insert
-      setNotice({ type: 'ok', text: `✅ "${who}" saved to database (${rec.candId}). It is now searchable across all users.` })
+      await saveCandidates(next)               // <-- explicit, awaited DB write
+      setNotice({ type: 'ok', text: `✅ "${who}" ${verb} database (${rec.candId}). Changes are live for all users.` })
     } catch (e) {
       setNotice({ type: 'err', text: `❌ Could not save "${who}" to the database: ${e.message}. Change kept locally — retry when back online.` })
     }
@@ -136,8 +141,25 @@ export default function App() {
   const updateStatus = (id, status) =>
     mutate(prev => prev.map(c => (c.id === id ? { ...c, status } : c)))
 
-  const deleteCandidate = id => {
-    if (confirm('Delete this candidate?')) mutate(prev => prev.filter(c => c.id !== id))
+  // Open the delete-reason modal (recruiter must give a reason before deleting).
+  const openDelete = c => { setDeleteTarget(c); setDeleteReason(''); setDeleteErr('') }
+  const confirmDelete = async () => {
+    const reason = deleteReason.trim()
+    if (reason.length < 5) { setDeleteErr('Please enter a valid reason (at least 5 characters).'); return }
+    const c = deleteTarget
+    const next = candidatesRef.current.filter(p => p.id !== c.id)
+    dirtyRef.current = true
+    candidatesRef.current = next
+    setCandidates(next)
+    setDeleteTarget(null)
+    const who = c.name || c.firstName || 'Candidate'
+    setNotice({ type: 'info', text: `Deleting "${who}"…` })
+    try {
+      await saveCandidates(next)
+      setNotice({ type: 'ok', text: `🗑️ "${who}" deleted. Reason: ${reason}` })
+    } catch (e) {
+      setNotice({ type: 'err', text: `❌ Could not delete "${who}": ${e.message}.` })
+    }
   }
   const importCandidates = rows => mutate(prev => [...migrate(rows), ...prev])
   const startAdd = () => { setEditing(null); setShowForm(true) }
@@ -221,8 +243,34 @@ export default function App() {
             <span className="count">{filtered.length} / {candidates.length}</span>
           </div>
           <CandidateTable candidates={filtered} onEdit={startEdit}
-            onDelete={deleteCandidate} onStatusChange={updateStatus} />
+            onDelete={openDelete} onStatusChange={updateStatus} />
         </>
+      )}
+
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="modal" role="alertdialog" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon">🗑️</div>
+            <h3>Delete candidate</h3>
+            <p className="modal-text">
+              Enter a reason to delete <b>{deleteTarget.name || deleteTarget.firstName || 'this candidate'}</b>
+              {deleteTarget.candId ? ` (${deleteTarget.candId})` : ''}. Required for the recruiter audit trail.
+            </p>
+            <textarea
+              className="reason-input"
+              rows={3}
+              autoFocus
+              value={deleteReason}
+              placeholder="e.g. Duplicate profile · Candidate withdrew · Position filled…"
+              onChange={e => { setDeleteReason(e.target.value); if (deleteErr) setDeleteErr('') }}
+            />
+            {deleteErr && <p className="msg err">{deleteErr}</p>}
+            <div className="modal-actions">
+              <button type="button" className="btn ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button type="button" className="btn danger" onClick={confirmDelete}>Delete Candidate</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <footer className="foot">
