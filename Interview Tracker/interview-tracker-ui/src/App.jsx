@@ -145,10 +145,13 @@ export default function App() {
   const resetSeed = () => {
     if (confirm('Reset to sample data? Clears your changes.')) mutate(() => migrate(sampleCandidates))
   }
+  // Switch tabs and always close any open Add/Edit form so navigation is never
+  // blocked by the form overlaying the view.
+  const goTab = t => { setTab(t); setShowForm(false); setEditing(null) }
   // Dashboard hyperlink -> jump to candidate list filtered by any field.
-  const openFilter = (key, value) => { setFilter({ ...EMPTY_FILTER, key, value }); setSearch(''); setTab('candidates') }
+  const openFilter = (key, value) => { setFilter({ ...EMPTY_FILTER, key, value }); setSearch(''); goTab('candidates') }
   // Dashboard stat tile -> jump to candidate list filtered by a predicate.
-  const openTile = ({ label, test }) => { setFilter({ ...EMPTY_FILTER, label, test }); setSearch(''); setTab('candidates') }
+  const openTile = ({ label, test }) => { setFilter({ ...EMPTY_FILTER, label, test }); setSearch(''); goTab('candidates') }
   const clearAll = () => { setSearch(''); setFilter(EMPTY_FILTER) }
   const filterActive = filter.key || filter.test
 
@@ -181,9 +184,9 @@ export default function App() {
       </header>
 
       <nav className="tabs">
-        <button className={tab === 'dashboard' ? 'tab on' : 'tab'} onClick={() => setTab('dashboard')}>Dashboard</button>
-        <button className={tab === 'candidates' ? 'tab on' : 'tab'} onClick={() => setTab('candidates')}>Candidates ({candidates.length})</button>
-        <button className={tab === 'import' ? 'tab on icon-tab' : 'tab icon-tab'} onClick={() => setTab('import')} title="Import" aria-label="Import">📥</button>
+        <button className={tab === 'dashboard' ? 'tab on' : 'tab'} onClick={() => goTab('dashboard')}>Dashboard</button>
+        <button className={tab === 'candidates' ? 'tab on' : 'tab'} onClick={() => goTab('candidates')}>Candidates ({candidates.length})</button>
+        <button className={tab === 'import' ? 'tab on icon-tab' : 'tab icon-tab'} onClick={() => goTab('import')} title="Import" aria-label="Import">📥</button>
       </nav>
 
       {showForm && (

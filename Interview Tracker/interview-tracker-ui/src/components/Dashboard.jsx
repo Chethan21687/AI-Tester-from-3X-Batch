@@ -44,13 +44,16 @@ export default function Dashboard({ candidates, onSelect, onTile }) {
   const inInterview = candidates.filter(isInterview).length
   const joined = candidates.filter(c => c.status === 'Joined').length
   const rejected = candidates.filter(isRejected).length
-  const openReqs = new Set(candidates.filter(c => c.reqStatus !== 'Closed').map(c => c.reqId)).size
+  const isOpenReq = c => c.reqStatus !== 'Closed'
+  // Candidate rows on open requirements — counted the same way the tile filters,
+  // so the tile number matches the list shown on click.
+  const openReqCandidates = candidates.filter(isOpenReq).length
 
   // Each tile carries the predicate its count is derived from, so clicking it
   // opens the candidate list filtered to exactly those records.
   const tiles = [
     { label: 'Candidates', value: total, test: () => true },
-    { label: 'Open Requirements', value: openReqs, test: c => c.reqStatus !== 'Closed' },
+    { label: 'Open Requirements', value: openReqCandidates, test: isOpenReq },
     { label: 'Submitted', value: submitted, test: c => c.status === 'Submit to Client' },
     { label: 'In Interview', value: inInterview, test: isInterview },
     { label: 'Joined', value: joined, test: c => c.status === 'Joined' },
