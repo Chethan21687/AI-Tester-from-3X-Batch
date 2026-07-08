@@ -100,11 +100,15 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', flush)
   }, [])
 
+  // Active = everything not soft-deleted. Every view, count, and export uses
+  // this; the full `candidates` list (incl. deleted rows) is what gets persisted.
+  const active = useMemo(() => candidates.filter(c => !c.deleted), [candidates])
+
   // Search scans EVERY field so any detail of any candidate (incl. newly
   // added ones, which live in the same list) is findable.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return candidates.filter(c => {
+    return active.filter(c => {
       const matchFilter = filter.test
         ? filter.test(c)
         : (!filter.key || (c[filter.key] || '') === filter.value)
@@ -117,7 +121,7 @@ export default function App() {
         .toLowerCase()
       return matchFilter && hay.includes(q)
     })
-  }, [candidates, search, filter, dateSourced])
+  }, [active, search, filter, dateSourced])
 
   // Add/Edit a candidate. Awaits the DB write and confirms it so the user knows
   // the record was actually inserted into MongoDB (and is now searchable).
@@ -148,35 +152,64 @@ export default function App() {
 
   // Open the delete-reason modal (recruiter must give a reason before deleting).
   const openDelete = c => { setDeleteTarget(c); setDeleteReason(''); setDeleteErr('') }
+  // Soft delete: the record is kept in the dataset with a `deleted` flag and
+  // hidden from every view, so it can always be recovered (Undo, or the audit
+  // trail). It is never physically removed from the DB.
   const confirmDelete = async () => {
     const reason = deleteReason.trim()
     if (reason.length < 5) { setDeleteErr('Please enter a valid reason (at least 5 characters).'); return }
     const c = deleteTarget
-    const next = candidatesRef.current.filter(p => p.id !== c.id)
+    const stamp = { deleted: true, deletedAt: new Date().toISOString(), deletedReason: reason }
+    const next = candidatesRef.current.map(p => (p.id === c.id ? { ...p, ...stamp } : p))
     dirtyRef.current = true
     candidatesRef.current = next
     setCandidates(next)
     setDeleteTarget(null)
     const who = c.name || c.firstName || 'Candidate'
+    // Restore = clear the soft-delete flags and persist.
+    const undo = () => {
+      const back = candidatesRef.current.map(p => {
+        if (p.id !== c.id) return p
+        const { deleted, deletedAt, deletedReason, ...rest } = p
+        return rest
+      })
+      dirtyRef.current = true
+      candidatesRef.current = back
+      setCandidates(back)
+      saveCandidates(back).catch(() => {})
+      setNotice({ type: 'ok', text: `↩️ Restored "${who}".` })
+    }
     setNotice({ type: 'info', text: `Deleting "${who}"…` })
     try {
-      // Record the deletion in the audit trail first, then remove the record.
+      // Record the deletion in the audit trail first, then persist the flag.
       await logDeletion({
         candId: c.candId, name: who, reason,
         recruiter: c.recruiter || c.owner || '', client: c.client || '', status: c.status || ''
       })
       await saveCandidates(next)
-      setNotice({ type: 'ok', text: `🗑️ "${who}" deleted and logged to audit trail. Reason: ${reason}` })
+      setNotice({ type: 'ok', text: `🗑️ "${who}" deleted (recoverable) and logged. Reason: ${reason}`, action: { label: 'Undo', run: undo } })
     } catch (e) {
       setNotice({ type: 'err', text: `❌ Could not delete "${who}": ${e.message}.` })
     }
   }
   const importCandidates = rows => mutate(prev => [...migrate(rows), ...prev])
+  // Non-destructive recovery: re-add any sample/test candidates missing from the
+  // current dataset (e.g. ones removed before soft-delete existed). Existing
+  // records are matched by Cand ID and never overwritten.
+  const restoreSamples = () => {
+    const have = new Set(candidatesRef.current.map(c => c.candId || c.id))
+    const missing = migrate(sampleCandidates).filter(s => !have.has(s.candId || s.id))
+    if (!missing.length) { setNotice({ type: 'ok', text: 'Sample candidates already present — nothing to restore.' }); return }
+    const next = [...candidatesRef.current, ...missing]
+    dirtyRef.current = true
+    candidatesRef.current = next
+    setCandidates(next)
+    saveCandidates(next)
+      .then(() => setNotice({ type: 'ok', text: `♻️ Restored ${missing.length} sample candidate(s).` }))
+      .catch(e => setNotice({ type: 'err', text: `❌ Restore save failed: ${e.message}.` }))
+  }
   const startAdd = () => { setEditing(null); setShowForm(true) }
   const startEdit = c => { setEditing(c); setShowForm(true) }
-  const resetSeed = () => {
-    if (confirm('Reset to sample data? Clears your changes.')) mutate(() => migrate(sampleCandidates))
-  }
   // Switch tabs and always close any open Add/Edit form so navigation is never
   // blocked by the form overlaying the view.
   const goTab = t => { setTab(t); setShowForm(false); setEditing(null) }
@@ -190,7 +223,7 @@ export default function App() {
   // Auto-dismiss success/info toasts (keep errors until clicked).
   useEffect(() => {
     if (!notice || notice.type === 'err') return
-    const t = setTimeout(() => setNotice(null), 4000)
+    const t = setTimeout(() => setNotice(null), notice.action ? 10000 : 4000)
     return () => clearTimeout(t)
   }, [notice])
 
@@ -198,7 +231,12 @@ export default function App() {
     <div className="app">
       {notice && (
         <div className={`toast ${notice.type}`} role="status" onClick={() => setNotice(null)}>
-          {notice.text}
+          <span>{notice.text}</span>
+          {notice.action && (
+            <button className="toast-action" onClick={e => { e.stopPropagation(); setNotice(null); notice.action.run() }}>
+              {notice.action.label}
+            </button>
+          )}
         </div>
       )}
       <header className="topbar">
@@ -208,16 +246,16 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           <button className="icon-btn primary" onClick={startAdd} title="Add" aria-label="Add">➕</button>
-          <button className="icon-btn" onClick={() => exportExcel(candidates)} title="Export to Excel" aria-label="Export to Excel">📊</button>
-          <button className="icon-btn" onClick={() => { window.location.href = mailtoSummary(candidates) }} title="Mail" aria-label="Mail">✉️</button>
-          <button className="icon-btn" onClick={() => openTeamsShare(candidates)} title="Teams" aria-label="Teams">👥</button>
-          <button className="icon-btn ghost" onClick={resetSeed} title="Reset" aria-label="Reset">🔄</button>
+          <button className="icon-btn" onClick={() => exportExcel(active)} title="Export to Excel" aria-label="Export to Excel">📊</button>
+          <button className="icon-btn" onClick={() => { window.location.href = mailtoSummary(active) }} title="Mail" aria-label="Mail">✉️</button>
+          <button className="icon-btn" onClick={() => openTeamsShare(active)} title="Teams" aria-label="Teams">👥</button>
+          <button className="icon-btn ghost" onClick={restoreSamples} title="Restore sample candidates" aria-label="Restore sample candidates">♻️</button>
         </div>
       </header>
 
       <nav className="tabs">
         <button className={tab === 'dashboard' ? 'tab on' : 'tab'} onClick={() => goTab('dashboard')}>Dashboard</button>
-        <button className={tab === 'candidates' ? 'tab on' : 'tab'} onClick={() => goTab('candidates')}>Candidates ({candidates.length})</button>
+        <button className={tab === 'candidates' ? 'tab on' : 'tab'} onClick={() => goTab('candidates')}>Candidates ({active.length})</button>
         <button className={tab === 'import' ? 'tab on icon-tab' : 'tab icon-tab'} onClick={() => goTab('import')} title="Import" aria-label="Import">📥</button>
         <button className={tab === 'audit' ? 'tab on' : 'tab'} onClick={() => goTab('audit')} title="Deletion audit log">🧾 Audit</button>
       </nav>
@@ -227,7 +265,7 @@ export default function App() {
           onCancel={() => { setShowForm(false); setEditing(null) }} />
       )}
 
-      {tab === 'dashboard' && <Dashboard candidates={candidates} onSelect={openFilter} onTile={openTile} />}
+      {tab === 'dashboard' && <Dashboard candidates={active} onSelect={openFilter} onTile={openTile} />}
 
       {tab === 'import' && <FileUpload onImport={importCandidates} />}
 
@@ -257,7 +295,7 @@ export default function App() {
             {(search || filterActive || dateSourced) && (
               <button className="btn ghost" onClick={clearAll}>Clear</button>
             )}
-            <span className="count">{filtered.length} / {candidates.length}</span>
+            <span className="count">{filtered.length} / {active.length}</span>
           </div>
           <CandidateTable candidates={filtered} onEdit={startEdit}
             onDelete={openDelete} onStatusChange={updateStatus} />

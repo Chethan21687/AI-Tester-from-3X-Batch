@@ -303,8 +303,15 @@ tbody tr:hover { background: var(--panel-2); }
   position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
   z-index: 60; max-width: 90vw; padding: 12px 18px; border-radius: 10px;
   font-size: 13px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 12px;
   box-shadow: 0 12px 30px -10px rgba(15,23,42,.5); animation: toastin .2s ease;
 }
+.toast-action {
+  flex: none; cursor: pointer; font: inherit; font-weight: 700;
+  padding: 4px 12px; border-radius: 7px; color: inherit;
+  background: rgba(255,255,255,.55); border: 1px solid currentColor;
+}
+.toast-action:hover { background: rgba(255,255,255,.85); }
 .toast.ok { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
 .toast.err { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 .toast.info { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
