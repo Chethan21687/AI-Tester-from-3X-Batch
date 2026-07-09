@@ -256,15 +256,15 @@ export default function App() {
       <nav className="tabs">
         <button className={tab === 'dashboard' ? 'tab on' : 'tab'} onClick={() => goTab('dashboard')}>Dashboard</button>
         <button className={tab === 'candidates' ? 'tab on' : 'tab'} onClick={() => goTab('candidates')}>Candidates ({active.length})</button>
-        <button className={tab === 'import' ? 'tab on icon-tab' : 'tab icon-tab'} onClick={() => goTab('import')} title="Import" aria-label="Import">📥</button>
+        <button className={tab === 'import' ? 'tab on' : 'tab'} onClick={() => goTab('import')} title="Import">📥 Import</button>
         <button className={tab === 'audit' ? 'tab on' : 'tab'} onClick={() => goTab('audit')} title="Deletion audit log">🧾 Audit</button>
       </nav>
 
-      {showForm && (
+      {showForm ? (
         <CandidateForm initial={editing} onSave={saveCandidate}
           onCancel={() => { setShowForm(false); setEditing(null) }} />
-      )}
-
+      ) : (
+        <>
       {tab === 'dashboard' && <Dashboard candidates={active} onSelect={openFilter} onTile={openTile} />}
 
       {tab === 'import' && <FileUpload onImport={importCandidates} />}
@@ -299,6 +299,8 @@ export default function App() {
           </div>
           <CandidateTable candidates={filtered} onEdit={startEdit}
             onDelete={openDelete} onStatusChange={updateStatus} />
+        </>
+      )}
         </>
       )}
 

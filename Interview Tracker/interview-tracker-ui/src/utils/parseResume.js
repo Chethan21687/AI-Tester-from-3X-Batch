@@ -169,5 +169,7 @@ export async function parseResume(file) {
   // Only keep non-empty values so we never wipe existing form data.
   const found = {}
   Object.entries(fields).forEach(([k, v]) => { if (v) found[k] = v })
-  return found
+  // Return the extracted fields alongside the raw text so callers can offer a
+  // side-by-side "preview & validate" view of the resume vs the parsed values.
+  return { fields: found, text }
 }

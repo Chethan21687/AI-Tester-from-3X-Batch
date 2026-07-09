@@ -33,6 +33,12 @@ export async function logDeletion(entry) {
 export async function fetchAuditLog() {
   const r = await fetch('/api/audit')
   if (!r.ok) throw new Error(`audit load failed (${r.status})`)
+  // Serverless /api routes only run on Vercel (or `vercel dev`). Under plain
+  // `vite dev` this request returns HTML/JS, not JSON — surface a clear message.
+  const ct = r.headers.get('content-type') || ''
+  if (!ct.includes('application/json')) {
+    throw new Error('Audit API is unavailable in local dev — deploy to Vercel or run `vercel dev`.')
+  }
   const d = await r.json()
   return Array.isArray(d.entries) ? d.entries : []
 }

@@ -2,9 +2,10 @@
   --bg: #eef2f9;        /* soft blue-grey — no longer black */
   --panel: #ffffff;
   --panel-2: #f1f5f9;
-  --line: #d7dde8;
-  --text: #1e293b;
-  --muted: #64748b;
+  --line: #334155;       /* dark borders across the whole app */
+  --line-dark: #334155;  /* strong border for icon buttons, search, list */
+  --text: #0f172a;
+  --muted: #475569;
   --brand: #6366f1;
   --brand-2: #4f46e5;
   --ok: #16a34a;
@@ -14,6 +15,20 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Form controls don't inherit the page font — force Plus Jakarta Sans. */
+button, input, select, textarea { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+/* Buttons and headings: Plus Jakarta Sans, bold, high-contrast text. */
+.btn, .icon-btn, .tab, .auth-tab, .pv-tab, .link-pill, button {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-weight: 700;
+}
+h1, h2, h3, h4 {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-weight: 800; color: var(--text);
+}
+
 body {
   margin: 0;
   color: var(--text);
@@ -91,7 +106,7 @@ body::after {
 .card {
   background: rgba(255, 255, 255, .82);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, .6);
+  border: 1px solid var(--line-dark);
   border-radius: 14px;
   padding: 18px;
   margin-bottom: 18px;
@@ -117,7 +132,7 @@ body::after {
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 18px; line-height: 1; cursor: pointer;
   background: var(--panel-2); color: var(--text);
-  border: 1px solid var(--line); border-radius: 10px;
+  border: 1px solid var(--line-dark); border-radius: 10px;
   transition: transform .12s, border-color .15s, box-shadow .15s;
 }
 .icon-btn:hover {
@@ -196,6 +211,9 @@ input, select, .search {
   color-scheme: light; /* native date/calendar picker renders light */
 }
 input:focus, select:focus { outline: none; border-color: var(--brand); }
+/* Search box: darker border + stronger text for contrast. */
+.search { border-color: var(--line-dark); color: var(--text); font-weight: 500; }
+.search::placeholder { color: var(--muted); }
 .form-actions { margin-top: 12px; }
 
 /* Resume auto-fill (inside Add/Edit form) */
@@ -246,7 +264,7 @@ input:focus, select:focus { outline: none; border-color: var(--brand); }
 
 /* Row action icons (edit / delete) */
 .icon-act {
-  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  background: #e0e7ff; border: 1px solid var(--line-dark); border-radius: 8px;
   font-size: 15px; line-height: 1; padding: 4px 6px; cursor: pointer; margin-right: 2px;
   transition: transform .1s, background .15s, border-color .15s;
 }
@@ -285,7 +303,7 @@ input:focus, select:focus { outline: none; border-color: var(--brand); }
 /* Table */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line-dark); white-space: nowrap; }
 th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
 th.sortable { cursor: pointer; user-select: none; }
 th.sortable:hover { color: var(--text); }
@@ -319,3 +337,62 @@ tbody tr:hover { background: var(--panel-2); }
 
 .empty { text-align: center; color: var(--muted); padding: 40px; }
 .foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+/* --- Resume preview & validate (split screen) --- */
+.preview-toggle { margin-top: 8px; }
+
+/* When previewing, form (left) and resume preview (right) share one screen. */
+.form-shell.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.form-shell.split .form { margin: 0; }
+
+.resume-preview-pane { position: sticky; top: 12px; align-self: start; }
+.resume-preview-pane .pv-file { display: block; color: var(--muted); margin: -4px 0 10px; }
+
+.pv-tabs { display: flex; gap: 6px; background: var(--panel-2); padding: 4px; border-radius: 10px; margin-bottom: 12px; }
+.pv-tab {
+  flex: 1; border: none; background: transparent; padding: 7px 10px; border-radius: 8px;
+  cursor: pointer; color: var(--muted); font-weight: 600; font-size: 13px;
+}
+.pv-tab.on { background: #fff; color: var(--brand-2); box-shadow: 0 2px 6px -2px rgba(30,41,59,.25); }
+
+.pv-table-wrap { overflow-x: auto; }
+.parse-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.parse-table th, .parse-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.parse-table th { color: var(--muted); font-weight: 600; }
+.parse-table td { color: var(--text); word-break: break-word; }
+.parse-table tr.diff td { background: #fffbeb; }
+.parse-table .pv-flag { text-align: center; font-size: 15px; }
+.parse-table tr.ok .pv-flag { color: #16a34a; }
+.parse-table tr.diff .pv-flag { color: #d97706; }
+.parse-table .muted { color: var(--muted); font-style: italic; }
+
+.pv-actions { margin: 10px 0 4px; }
+
+.pv-frame { width: 100%; height: 560px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+
+/* DOCX rendered as a real Word document (docx-preview) */
+.pv-docx-wrap {
+  max-height: 560px; overflow: auto;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 12px;
+}
+.pv-docx .docx-wrapper { background: transparent; padding: 0; }
+.pv-docx .docx-wrapper > section.docx {
+  margin: 0 auto 12px; box-shadow: 0 2px 10px -3px rgba(15,23,42,.3); background: #fff;
+}
+.pv-loading { color: var(--muted); font-size: 13px; padding: 12px; }
+.pv-text {
+  max-height: 560px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px; font-size: 12.5px; line-height: 1.5; color: var(--text); margin: 0;
+}
+
+/* Stack instead of side-by-side on narrow screens. */
+@media (max-width: 900px) {
+  .form-shell.split { grid-template-columns: 1fr; }
+  .resume-preview-pane { position: static; }
+}
