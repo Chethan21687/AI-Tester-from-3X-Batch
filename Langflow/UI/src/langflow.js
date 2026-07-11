@@ -5,6 +5,24 @@ export function authHeaders(apiKey) {
   return apiKey && apiKey.trim() ? { 'x-api-key': apiKey.trim() } : {}
 }
 
+// Parse a response as JSON, but give a useful error when the server returns
+// HTML (e.g. the SPA's index.html because Base URL doesn't point at Langflow).
+async function parseJson(res, what) {
+  const text = await res.text()
+  try {
+    return JSON.parse(text)
+  } catch {
+    const looksHtml = /^\s*</.test(text)
+    if (looksHtml)
+      throw new Error(
+        `${what}: got an HTML page instead of JSON. Base URL is not pointing at ` +
+          `a Langflow server (it hit the app itself). Set Base URL in Connection ` +
+          `settings to your Langflow URL, or the VITE_LANGFLOW_URL env var.`
+      )
+    throw new Error(`${what}: response was not valid JSON — ${text.slice(0, 120)}`)
+  }
+}
+
 // GET the flow graph and auto-discover the input / file / output node ids.
 // Returns { chatInputId, fileId, chatOutputId, nodes } — any may be ''.
 export async function discoverComponents(cfg) {
@@ -15,7 +33,7 @@ export async function discoverComponents(cfg) {
     const t = await res.text()
     throw new Error(`Could not load flow (${res.status}): ${t}`)
   }
-  const flow = await res.json()
+  const flow = await parseJson(res, 'Load flow')
   const nodes = flow?.data?.nodes || flow?.nodes || []
 
   const idOf = (matchers) => {
@@ -52,7 +70,7 @@ export async function uploadFile(cfg, file) {
     const t = await res.text()
     throw new Error(`Upload of ${file.name} failed (${res.status}): ${t}`)
   }
-  const data = await res.json()
+  const data = await parseJson(res, 'Upload')
   return data.file_path || data.filePath || data.path
 }
 
@@ -77,7 +95,7 @@ export async function runFlow(cfg, { inputValue, tweaks, sessionId }) {
     const t = await res.text()
     throw new Error(`Run failed (${res.status}): ${t}`)
   }
-  return res.json()
+  return parseJson(res, 'Run')
 }
 
 // Pull the message text out of Langflow's nested run response.
