@@ -20,8 +20,10 @@ const DEFAULT_QUERY =
   'Preconditions | Steps | Expected Result. Cover positive, negative, ' +
   'boundary, and edge scenarios.'
 
+const ENV_BASE_URL = (import.meta.env.VITE_LANGFLOW_URL || '').trim()
+
 const DEFAULTS = {
-  baseUrl: '',
+  baseUrl: ENV_BASE_URL,
   flowId: '1b208206-690f-48e2-862d-d627a03b04a0',
   apiKey: '',
   chatInputId: '',
@@ -36,7 +38,10 @@ const STORAGE_KEY = 'rag-tc-cfg'
 function loadCfg() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-    return { ...DEFAULTS, ...saved }
+    const merged = { ...DEFAULTS, ...saved }
+    // Env var wins when the user has no saved Base URL (e.g. on Vercel).
+    if (!merged.baseUrl && ENV_BASE_URL) merged.baseUrl = ENV_BASE_URL
+    return merged
   } catch {
     return DEFAULTS
   }
