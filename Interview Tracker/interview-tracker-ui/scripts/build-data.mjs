@@ -26,7 +26,7 @@ const STATUS_MAP = {
 }
 // Per-candidate overrides where the reason implies a more specific status.
 const OVERRIDE = { 'Bushra': 'L2 Reject', 'Prashant K. Mishra': 'Duplicate', 'Reshma R': 'Duplicate' }
-const RECRUITER = { Roshini: 'Roshini S', Archana: 'Archana H R', Apoorva: 'Apporva M', Reshma: 'Reshma D S' }
+const RECRUITER = { Roshini: 'Roshini S', Archana: 'Archana H R', Apoorva: 'Apoorva M', Reshma: 'Reshma D S' }
 
 function reqStatusFor(s) {
   if (s === 'On Hold') return 'On Hold'

@@ -71,6 +71,7 @@ export const RECRUITER_REMAP = {
   'archana': 'Archana H R',
   'apoorva': 'Apoorva M',
   'apporva': 'Apoorva M',
+  'apporva m': 'Apoorva M',
   'reshma': 'Reshma D S'
 }
 export function normalizeRecruiter(v) {
