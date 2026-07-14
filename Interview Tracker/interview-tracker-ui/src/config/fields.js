@@ -63,14 +63,14 @@ export const INTERVIEW_MODE = ['', 'Online', 'Teams', 'Telephonic', 'Face to Fac
 export const LAST_ROUND_OUTCOME = ['', 'Pending', 'Selected', 'Rejected', 'Req Hold']
 export const RELOCATE = ['Yes', 'No']
 export const SOURCE = ['Naukri', 'LinkedIn', 'Internal Bench', 'Referral', 'Other']
-export const RECRUITERS = ['Roshini S', 'Archana H R', 'Apporva M', 'Reshma D S']
+export const RECRUITERS = ['Roshini S', 'Archana H R', 'Apoorva M', 'Reshma D S']
 
 // Maps short/legacy recruiter names to the current full names.
 export const RECRUITER_REMAP = {
   'roshini': 'Roshini S',
   'archana': 'Archana H R',
-  'apoorva': 'Apporva M',
-  'apporva': 'Apporva M',
+  'apoorva': 'Apoorva M',
+  'apporva': 'Apoorva M',
   'reshma': 'Reshma D S'
 }
 export function normalizeRecruiter(v) {
