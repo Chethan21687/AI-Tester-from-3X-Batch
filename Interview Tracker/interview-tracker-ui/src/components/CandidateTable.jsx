@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { downloadICS, mailtoSchedule } from '../utils/schedule.js'
-import { statusClass, CANDIDATE_STATUS } from '../config/fields.js'
+import { statusClass, CANDIDATE_STATUS, REQ_STATUS } from '../config/fields.js'
 
 const COLUMNS = [
   { key: 'candId', label: 'Cand ID' },
@@ -26,6 +26,11 @@ const COLUMNS = [
 
 // Columns holding human-typed dates ("21st May 2026", "4th June 2026", …).
 const DATE_COLS = new Set(['dateSourced', 'dateSubmitted', 'interviewDate', 'earliestJoining'])
+
+// Title-case a client name for display so any stored casing ("CODEYOUNG",
+// "codeyoung") shows the same canonical spelling as the dashboard.
+const titleCaseClient = v =>
+  String(v ?? '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/\b\p{L}/gu, ch => ch.toUpperCase())
 
 // Parse a free-text date to a timestamp for chronological sorting (NaN if none).
 function parseDateish(v) {
@@ -60,7 +65,7 @@ function compare(a, b) {
   return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true })
 }
 
-export default function CandidateTable({ candidates, onEdit, onDelete, onStatusChange }) {
+export default function CandidateTable({ candidates, onEdit, onDelete, onStatusChange, onReqStatusChange }) {
   // Default: newest sourced candidates first.
   const [sort, setSort] = useState({ key: 'dateSourced', dir: -1 })
 
@@ -107,11 +112,24 @@ export default function CandidateTable({ candidates, onEdit, onDelete, onStatusC
             <tr key={c.id}>
               {COLUMNS.map(col => (
                 <td key={col.key} className={col.key === 'email' ? '' : 'nowrap'}>
-                  {col.pill
-                    ? (c[col.key] ? <span className={statusClass(c[col.key])}>{c[col.key]}</span> : '—')
-                    : DATE_COLS.has(col.key)
-                      ? formatDateCell(c[col.key])
-                      : (c[col.key] || '—')}
+                  {col.key === 'reqStatus'
+                    ? (
+                      /* Inline requirement status — auto-updates on change. */
+                      <select
+                        className={`status-select ${statusClass(c.reqStatus)}`}
+                        value={c.reqStatus || 'Open'}
+                        onChange={e => onReqStatusChange(c.id, e.target.value)}
+                      >
+                        {REQ_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    )
+                    : col.pill
+                      ? (c[col.key] ? <span className={statusClass(c[col.key])}>{c[col.key]}</span> : '—')
+                      : DATE_COLS.has(col.key)
+                        ? formatDateCell(c[col.key])
+                        : col.key === 'client'
+                          ? (titleCaseClient(c.client) || '—')
+                          : (c[col.key] || '—')}
                 </td>
               ))}
               <td className="nowrap">

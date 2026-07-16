@@ -149,6 +149,9 @@ export default function App() {
   // Inline status change — auto-applied immediately (persists + refreshes dashboard).
   const updateStatus = (id, status) =>
     mutate(prev => prev.map(c => (c.id === id ? { ...c, status } : c)))
+  // Inline requirement-status change — same auto-persist behaviour.
+  const updateReqStatus = (id, reqStatus) =>
+    mutate(prev => prev.map(c => (c.id === id ? { ...c, reqStatus } : c)))
 
   // Open the delete-reason modal (recruiter must give a reason before deleting).
   const openDelete = c => { setDeleteTarget(c); setDeleteReason(''); setDeleteErr('') }
@@ -298,7 +301,7 @@ export default function App() {
             <span className="count">{filtered.length} / {active.length}</span>
           </div>
           <CandidateTable candidates={filtered} onEdit={startEdit}
-            onDelete={openDelete} onStatusChange={updateStatus} />
+            onDelete={openDelete} onStatusChange={updateStatus} onReqStatusChange={updateReqStatus} />
         </>
       )}
         </>

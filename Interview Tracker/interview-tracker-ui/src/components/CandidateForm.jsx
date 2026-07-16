@@ -24,6 +24,13 @@ function formValueFor(form, key) {
 }
 const norm = v => String(v ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
 
+// Title-case a client name: each word's first letter uppercased, rest lower —
+// so any casing the user types collapses to one canonical spelling.
+const titleCaseClient = v =>
+  String(v ?? '').trim().replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/\b\p{L}/gu, ch => ch.toUpperCase())
+
 // Add or edit a candidate. Controlled form driven by FIELD_GROUPS config.
 export default function CandidateForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(emptyCandidate())
@@ -151,6 +158,8 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
     return errs
   }
 
+  const doSave = f => onSave(composeInterview(composeName({ ...f, id: f.id || 'c-' + Date.now() })))
+
   const submit = e => {
     e.preventDefault()
     const errs = validate()
@@ -162,7 +171,10 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
       })
       return
     }
-    onSave(composeInterview(composeName({ ...form, id: form.id || 'c-' + Date.now() })))
+    // Normalise the client name to Title Case regardless of how it was typed
+    // ("acme" / "ACME" / "aCmE" -> "Acme") so the same client is never split
+    // into separate groups in the dashboard and filters.
+    doSave({ ...form, client: titleCaseClient(form.client) })
   }
 
   const splitting = showPreview && resumeData
@@ -241,7 +253,13 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
             <div className="modal-icon">⚠️</div>
             <h3>{popup.title}</h3>
             <ul>{popup.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
-            <button type="button" className="btn primary" onClick={() => setPopup(null)}>Got it</button>
+            {popup.actions
+              ? <div className="modal-actions">
+                  {popup.actions.map((a, i) => (
+                    <button key={i} type="button" className={`btn ${a.primary ? 'primary' : 'ghost'}`} onClick={a.run}>{a.label}</button>
+                  ))}
+                </div>
+              : <button type="button" className="btn primary" onClick={() => setPopup(null)}>Got it</button>}
           </div>
         </div>
       )}
