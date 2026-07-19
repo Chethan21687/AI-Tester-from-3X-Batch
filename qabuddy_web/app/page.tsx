@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles, User, Loader2, ExternalLink, Check } from 'lucide-react'
+import { Send, Sparkles, User, Loader2, ExternalLink, Check, FileText } from 'lucide-react'
 
 const C = {
   bg: '#FDFBF5', band: '#F7F2E6', sub: '#FBF8EF', card: '#FFFFFF',
@@ -185,7 +185,14 @@ export default function Home() {
           </select>
         </div>
 
-        <div style={{ padding: '16px 22px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '12px 22px', borderTop: `1px solid ${C.border}` }}>
+          <a href="/docs/index.html" target="_blank" rel="noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.gold, textDecoration: 'none', fontWeight: 600 }}>
+            <FileText size={14} /> Architecture &amp; docs ↗
+          </a>
+        </div>
+
+        <div style={{ padding: '14px 22px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 10.5, color: C.gold, fontWeight: 700, letterSpacing: 1.5 }}>INGEST</span>
           <button onClick={() => setErr('Ingestion is a Phase-2 backend feature (Qdrant + ingestion worker); this web build answers from the documented sources.')}
             style={{ fontSize: 12, padding: '4px 12px', borderRadius: 999, border: `1px solid ${C.border}`, background: C.card, color: C.muted, cursor: 'pointer' }}>open</button>
