@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QA Buddy — Backend & Architecture</title>
+<style>
+  :root{
+    --bg:#FDFBF5; --band:#F7F2E6; --sub:#FBF8EF; --card:#FFFFFF;
+    --border:#E6DCC4; --border2:#EAE2CE; --ink:#3B3220; --muted:#8A7C63;
+    --faint:#B3A587; --gold:#9C7C3C; --gold-soft:#F3ECDA; --terra:#C0603A;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.65}
+  .wrap{max-width:920px;margin:0 auto;padding:0 22px}
+  header{background:var(--card);border-bottom:1px solid var(--border)}
+  .bar{height:4px;background:#1E3A5F}
+  .head{display:flex;align-items:center;gap:12px;padding:22px 0}
+  .logo{width:40px;height:40px;border-radius:10px;background:var(--gold-soft);
+    border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+    color:var(--gold);font-size:20px}
+  h1{font-size:22px;margin:0}
+  .sub{font-size:12.5px;color:var(--faint);letter-spacing:2px}
+  .live{margin-left:auto;background:var(--terra);color:#fff;text-decoration:none;
+    padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;white-space:nowrap}
+  h2{font-size:18px;margin:34px 0 10px;padding-top:8px}
+  h3{font-size:14.5px;margin:22px 0 6px;color:var(--ink)}
+  p{margin:8px 0;color:#4a4232}
+  .lead{font-size:18px;color:var(--ink);margin-top:20px}
+  .lead b{color:var(--terra)}
+  code{background:var(--sub);border:1px solid var(--border2);border-radius:5px;
+    padding:1px 6px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+  pre{background:var(--sub);border:1px solid var(--border2);border-radius:10px;
+    padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.6}
+  pre code{background:none;border:none;padding:0}
+  .kicker{font-size:11px;color:var(--gold);font-weight:700;letter-spacing:1.5px}
+  figure{margin:16px 0;background:var(--card);border:1px solid var(--border2);
+    border-radius:14px;padding:14px;overflow-x:auto}
+  figure img{max-width:100%;height:auto;display:block;margin:0 auto}
+  figcaption{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{border:1px solid var(--border2);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--band);color:var(--gold);font-weight:700}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:12px 0}
+  .cardlet{background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:14px 16px}
+  .cardlet .n{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--terra);
+    color:var(--terra);font-size:12px;font-weight:700;display:flex;align-items:center;
+    justify-content:center;margin-bottom:8px}
+  .cardlet b{font-size:14px}
+  .cardlet span{font-size:12.5px;color:var(--muted);display:block;margin-top:2px}
+  .note{background:var(--gold-soft);border:1px solid var(--border);border-radius:10px;
+    padding:12px 15px;font-size:13.5px;margin:14px 0}
+  ul{margin:8px 0;padding-left:20px}li{margin:4px 0}
+  footer{border-top:1px solid var(--border);margin-top:44px;padding:22px 0;
+    font-size:12.5px;color:var(--faint)}
+  a{color:var(--gold)}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#1a1712;--band:#241f18;--sub:#201b15;--card:#221d16;--border:#3a3226;
+      --border2:#413928;--ink:#ede4d3;--muted:#b3a587;--faint:#8a7c63;
+      --gold:#cba658;--gold-soft:#2e2718;--terra:#d47a52}
+    p{color:#cfc4b0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar"></div>
+  <div class="wrap head">
+    <div class="logo">✦</div>
+    <div>
+      <h1>QA Buddy</h1>
+      <div class="sub">BACKEND &amp; ARCHITECTURE</div>
+    </div>
+    <a class="live" href="https://qabuddyweb.vercel.app" target="_blank" rel="noreferrer">Open live app ↗</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="lead">
+    Ask a question, receive a single <b>citation-backed</b> answer grounded in your team's
+    QA knowledge — the Selenium &amp; Playwright frameworks, ~5,000 test cases, JIRA (QAB),
+    product requirements, meeting notes, and Jenkins logs.
+  </p>
+  <p><span class="kicker">LIVE</span> &nbsp;<a href="https://qabuddyweb.vercel.app" target="_blank" rel="noreferrer">https://qabuddyweb.vercel.app</a></p>
+
+  <h2>1 · What it is</h2>
+  <p>
+    QA Buddy is a hybrid-RAG QA knowledge assistant, defined by the <em>QABuddy Enterprise
+    Requirement Document</em> across 12 knowledge sources. The shipped web app presents that
+    knowledge base as a left sidebar of toggleable sources and answers questions with inline
+    citations. This document explains how the answer is produced and how the system is deployed.
+  </p>
+
+  <h2>2 · How an answer is fetched</h2>
+  <div class="grid">
+    <div class="cardlet"><div class="n">1</div><b>Understand</b><span>the question is condensed and rewritten into search variants</span></div>
+    <div class="cardlet"><div class="n">2</div><b>Hybrid search</b><span>meaning (dense) + exact keywords (ids, exceptions, method names) across selected sources</span></div>
+    <div class="cardlet"><div class="n">3</div><b>Fuse &amp; rerank</b><span>result lists merge (RRF); a cross-encoder keeps the most relevant chunks</span></div>
+    <div class="cardlet"><div class="n">4</div><b>Cited answer</b><span>the LLM answers only from those chunks, citing file:line, ticket, or build</span></div>
+  </div>
+
+  <h2>3 · System architecture</h2>
+  <p>Three tiers — presentation, application (answer service + ingestion worker), and data (vector DB + raw sources).</p>
+  <figure>
+    <img src="qabuddy_architecture.svg" alt="QA Buddy 3-tier hybrid RAG architecture" />
+    <figcaption>3-tier hybrid RAG — presentation · application · data. (PNG: <a href="qabuddy_architecture.png">qabuddy_architecture.png</a>)</figcaption>
+  </figure>
+  <figure>
+    <img src="qabuddy_system_architecture.svg" alt="QA Buddy self-hosted Docker Compose system architecture" />
+    <figcaption>Self-hosted reference (Docker Compose): Streamlit · FastAPI · Qdrant · BGE-M3. (PNG: <a href="qabuddy_system_architecture.png">qabuddy_system_architecture.png</a>)</figcaption>
+  </figure>
+
+  <h2>4 · Backend (as shipped) — real hybrid RAG</h2>
+  <p>
+    The Vercel serverless route forwards to a <b>FastAPI answer service</b> that runs the full
+    retrieval pipeline. Answers are grounded in <em>retrieved chunks</em>, and citations point
+    to the actual source files — not model memory.
+  </p>
+  <h3>Request flow</h3>
+  <pre><code>Browser (React UI)
+   │  POST /api/chat  { messages, scope, system }
+   ▼
+Vercel serverless route (app/api/chat/route.ts)
+   │  forwards to RAG_BACKEND_URL
+   ▼
+FastAPI answer service  (backend/rag_app.py)
+   │  ① embed query (dense bge-small + sparse bm25, ONNX/CPU)
+   │  ② Qdrant hybrid search → top-K each branch
+   │  ③ Reciprocal Rank Fusion (RRF)
+   │  ④ cross-encoder rerank (MiniLM) → keep top-5
+   │  ⑤ grounded prompt → Groq (llama-3.3-70b)
+   ▼
+cited answer + structured sources → UI citation pills</code></pre>
+
+  <h3>Components</h3>
+  <p>
+    <b>Qdrant</b> (embedded local mode, no Docker) stores dense + sparse vectors in one
+    collection. <b>fastembed</b> serves the embedder and reranker as ONNX models on CPU.
+    <b>Ingestion</b> (<code>backend/ingest.py</code>) parses <code>data/&lt;source&gt;/…</code>,
+    chunks, embeds, and upserts — with a <code>source</code> payload so the UI's scope toggles
+    filter retrieval. The <b>LLM</b> is Groq (OpenAI-compatible; free tier, no Anthropic dependency).
+  </p>
+  <div class="note">
+    <b>Runs locally + tunnel:</b> the FastAPI service + Qdrant run on your machine and are
+    exposed via a tunnel; <code>RAG_BACKEND_URL</code> in Vercel points the web app at it.
+    CPU-friendly models (bge-small / bm25 / MiniLM) stand in for BGE-M3 / bge-reranker-v2-m3 —
+    a one-env-var swap on a GPU host restores the exact reference models.
+  </div>
+
+  <h3>Backend comparison</h3>
+  <table>
+    <tr><th>Aspect</th><th>Before</th><th>After</th></tr>
+    <tr><td>Provider</td><td>Anthropic API</td><td>Groq API</td></tr>
+    <tr><td>Model</td><td>claude-sonnet-*</td><td>llama-3.3-70b-versatile</td></tr>
+    <tr><td>Client</td><td><code>@anthropic-ai/sdk</code></td><td>OpenAI-compatible <code>fetch</code></td></tr>
+    <tr><td>Cost</td><td>paid credits (was $0 → blocked)</td><td>free tier</td></tr>
+    <tr><td>Env var</td><td><code>ANTHROPIC_API_KEY</code></td><td><code>GROQ_API_KEY</code></td></tr>
+  </table>
+
+  <h2>5 · Deployment</h2>
+  <table>
+    <tr><th>Concern</th><th>Choice</th></tr>
+    <tr><td>Host</td><td>Vercel (static UI + serverless <code>/api/chat</code>)</td></tr>
+    <tr><td>Framework</td><td>Next.js 14 App Router · React 18 · TypeScript</td></tr>
+    <tr><td>Secrets</td><td><code>GROQ_API_KEY</code> in Vercel project env (Production)</td></tr>
+    <tr><td>Public access</td><td>Deployment Protection → Vercel Authentication = Off</td></tr>
+    <tr><td>Stable URL</td><td><a href="https://qabuddyweb.vercel.app">qabuddyweb.vercel.app</a></td></tr>
+  </table>
+
+  <h2>6 · Knowledge sources (12)</h2>
+  <p>
+    Selenium repo · Playwright repo · VWO project · Test cases (~5,000) · JIRA (QAB) ·
+    Company docs · Figma · Meeting notes · Lucid charts · Requirements (PRD/BRD/FRD/SRS) ·
+    Jenkins · Swagger. Each is a toggle in the sidebar; the in-scope set is injected into the
+    grounding prompt for every question.
+  </p>
+
+  <footer>
+    QA Buddy · hybrid-RAG QA knowledge system · Next.js + Groq on Vercel ·
+    <a href="https://qabuddyweb.vercel.app" target="_blank" rel="noreferrer">qabuddyweb.vercel.app</a>
+  </footer>
+</main>
+</body>
+</html>
