@@ -111,37 +111,41 @@
     <figcaption>Self-hosted reference (Docker Compose): Streamlit · FastAPI · Qdrant · BGE-M3. (PNG: <a href="qabuddy_system_architecture.png">qabuddy_system_architecture.png</a>)</figcaption>
   </figure>
 
-  <h2>4 · Backend (as shipped)</h2>
+  <h2>4 · Backend (as shipped) — real hybrid RAG</h2>
   <p>
-    The deployed web build is a Next.js app on Vercel. The browser posts to a serverless
-    route which calls the LLM and returns a grounded, cited answer. No always-on server is
-    required for the hosted app.
+    The Vercel serverless route forwards to a <b>FastAPI answer service</b> that runs the full
+    retrieval pipeline. Answers are grounded in <em>retrieved chunks</em>, and citations point
+    to the actual source files — not model memory.
   </p>
   <h3>Request flow</h3>
   <pre><code>Browser (React UI)
    │  POST /api/chat  { messages, scope, system }
    ▼
-Vercel serverless function  (app/api/chat/route.ts)
-   │  builds system prompt from in-scope sources
-   │  POST https://api.groq.com/openai/v1/chat/completions
+Vercel serverless route (app/api/chat/route.ts)
+   │  forwards to RAG_BACKEND_URL
    ▼
-Groq LLM  (llama-3.3-70b-versatile)
-   │  grounded, cited answer + &lt;sources&gt; line
+FastAPI answer service  (backend/rag_app.py)
+   │  ① embed query (dense bge-small + sparse bm25, ONNX/CPU)
+   │  ② Qdrant hybrid search → top-K each branch
+   │  ③ Reciprocal Rank Fusion (RRF)
+   │  ④ cross-encoder rerank (MiniLM) → keep top-5
+   │  ⑤ grounded prompt → Groq (llama-3.3-70b)
    ▼
-UI renders answer + citation pills</code></pre>
+cited answer + structured sources → UI citation pills</code></pre>
 
-  <h3>Why Groq</h3>
+  <h3>Components</h3>
   <p>
-    The backend originally called the <b>Anthropic API</b>. Requests failed with
-    <code>credit balance is too low</code> — a billing state independent of where the app runs,
-    so hosting on Vercel could not fix it. The route was moved to <b>Groq</b> (free tier,
-    OpenAI-compatible), removing any paid-credit dependency while keeping the same
-    request/response shape.
+    <b>Qdrant</b> (embedded local mode, no Docker) stores dense + sparse vectors in one
+    collection. <b>fastembed</b> serves the embedder and reranker as ONNX models on CPU.
+    <b>Ingestion</b> (<code>backend/ingest.py</code>) parses <code>data/&lt;source&gt;/…</code>,
+    chunks, embeds, and upserts — with a <code>source</code> payload so the UI's scope toggles
+    filter retrieval. The <b>LLM</b> is Groq (OpenAI-compatible; free tier, no Anthropic dependency).
   </p>
   <div class="note">
-    <b>The move, in one line:</b> swap <code>@anthropic-ai/sdk</code> for a plain
-    <code>fetch</code> to Groq's OpenAI-compatible endpoint; set <code>GROQ_API_KEY</code> /
-    <code>GROQ_MODEL</code>. The frontend, prompts, and citation format are unchanged.
+    <b>Runs locally + tunnel:</b> the FastAPI service + Qdrant run on your machine and are
+    exposed via a tunnel; <code>RAG_BACKEND_URL</code> in Vercel points the web app at it.
+    CPU-friendly models (bge-small / bm25 / MiniLM) stand in for BGE-M3 / bge-reranker-v2-m3 —
+    a one-env-var swap on a GPU host restores the exact reference models.
   </div>
 
   <h3>Backend comparison</h3>

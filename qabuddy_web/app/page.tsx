@@ -121,11 +121,13 @@ export default function Home() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       let clean = data.answer || ''
-      let sources: Message['sources'] = []
+      let sources: Array<{ label: string; type: string; ref: string }> = []
+      // RAG backend returns structured sources; direct-Groq embeds a <sources> line.
+      if (Array.isArray(data.sources) && data.sources.length) sources = data.sources
       const m = clean.match(/<sources>([\s\S]*?)<\/sources>/)
       if (m) {
         clean = clean.replace(m[0], '').trim()
-        try { sources = JSON.parse(m[1]) } catch { }
+        if (!sources.length) { try { sources = JSON.parse(m[1]) } catch { } }
       }
       setMessages(p => [...p, { role: 'assistant', content: clean, sources }])
     } catch (e: any) {

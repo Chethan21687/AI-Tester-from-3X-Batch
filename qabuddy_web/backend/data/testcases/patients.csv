@@ -1,0 +1,9 @@
+TestCaseID,FirstName,LastName,DateOfBirth,Gender,SSNLast4,Street,City,State,ZipCode,Phone,Email,InsuranceProvider,PolicyNumber,BloodType,Allergies,PrimaryDiagnosis,MaritalStatus
+TC_PAT_001,John,Smith,1984-03-15,Male,4521,742 Evergreen Terrace,Chicago,IL,60601,312-555-0142,john.smith@test.example.com,Blue Cross Blue Shield,BCBS-IL-884721,O+,Penicillin|Sulfa,Type 2 Diabetes,Married
+TC_PAT_002,Sarah,Johnson,1978-07-22,Female,7834,1620 N Lakeview Ave,Houston,TX,77002,713-555-0263,sarah.johnson@test.example.com,Aetna Health,AET-TX-221034,A-,Aspirin,Hypertension,Married
+TC_PAT_003,Robert,Williams,1990-11-08,Male,3302,3845 Maple Drive,Phoenix,AZ,85001,602-555-0177,robert.williams@test.example.com,UnitedHealth Group,UHG-AZ-441892,B+,,Asthma,Single
+TC_PAT_004,Mary,Brown,1986-04-30,Female,6619,2201 Oak Street,Philadelphia,PA,19103,215-555-0334,mary.brown@test.example.com,Cigna Health,CIG-PA-558243,AB+,Latex,Hypothyroidism,Married
+TC_PAT_005,David,Jones,1994-01-17,Male,9821,508 Pine Avenue,San Antonio,TX,78201,210-555-0088,david.jones@test.example.com,Humana,HUM-TX-773341,O-,Codeine,Anxiety Disorder,Single
+TC_PAT_006,Jennifer,Davis,1980-09-25,Female,2244,900 Riverside Blvd,Los Angeles,CA,90001,213-555-0449,jennifer.davis@test.example.com,Kaiser Permanente,KP-CA-334455,A+,,Migraine,Divorced
+TC_PAT_007,Michael,Miller,1988-06-03,Male,5567,1400 University Ave,Seattle,WA,98101,206-555-0556,michael.miller@test.example.com,Premera Blue Cross,PBC-WA-667788,B-,Shellfish,GERD,Single
+TC_PAT_008,Lisa,Wilson,1976-12-14,Female,8890,2750 Park Street,Miami,FL,33101,305-555-0661,lisa.wilson@test.example.com,Florida Blue,FLB-FL-990011,AB-,Penicillin|NSAIDs,Fibromyalgia,Married

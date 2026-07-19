@@ -1,0 +1,8 @@
+TestCaseID,FirstName,LastName,Title,Specialty,NPINumber,LicenseNumber,LicenseState,Phone,Email,Department,AcceptingPatients
+TC_PRV_001,William,Anderson,MD,Cardiology,1234567890,IL-MD-2019-003421,IL,312-555-0501,dr.w.anderson@healthcare.example.com,Cardiovascular Medicine,TRUE
+TC_PRV_002,Patricia,Martinez,MD,Internal Medicine,2345678901,TX-MD-2015-007812,TX,713-555-0602,dr.p.martinez@healthcare.example.com,General Medicine,TRUE
+TC_PRV_003,James,Taylor,DO,Family Medicine,3456789012,AZ-DO-2017-001834,AZ,602-555-0703,dr.j.taylor@healthcare.example.com,Primary Care,TRUE
+TC_PRV_004,Barbara,Moore,MD,Oncology,4567890123,PA-MD-2012-009251,PA,215-555-0804,dr.b.moore@healthcare.example.com,Oncology Center,FALSE
+TC_PRV_005,Richard,Harris,MD,Neurology,5678901234,TX-MD-2010-005533,TX,210-555-0905,dr.r.harris@healthcare.example.com,Neuroscience Center,TRUE
+TC_PRV_006,Nancy,Thompson,NP,Pediatrics,6789012345,IL-NP-2020-002211,IL,312-555-1001,np.n.thompson@healthcare.example.com,Pediatric Care,TRUE
+TC_PRV_007,Charles,Jackson,MD,Endocrinology,7890123456,CA-MD-2014-008843,CA,213-555-1102,dr.c.jackson@healthcare.example.com,Endocrinology,TRUE

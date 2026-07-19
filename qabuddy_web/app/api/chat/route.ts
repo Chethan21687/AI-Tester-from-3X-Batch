@@ -12,7 +12,26 @@ const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, system } = await req.json()
+    const { messages, scope, system } = await req.json()
+
+    // Preferred path: the hybrid-RAG backend (FastAPI + Qdrant + rerank).
+    // If RAG_BACKEND_URL is set, retrieve real cited chunks; else fall back to direct Groq.
+    const backend = process.env.RAG_BACKEND_URL
+    if (backend) {
+      try {
+        const r = await fetch(`${backend.replace(/\/$/, '')}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+          body: JSON.stringify({ messages, scope, system }),
+        })
+        if (r.ok) {
+          const d = await r.json()
+          return NextResponse.json({ answer: d.answer, sources: d.sources || [], backend: 'qdrant-rag', latency_ms: d.latency_ms })
+        }
+      } catch (e) {
+        // fall through to direct Groq if the backend/tunnel is down
+      }
+    }
 
     const key = process.env.GROQ_API_KEY
     if (!key) {
