@@ -1,0 +1,5 @@
+
+# Real candidate data (emails, phone numbers) — never commit to a public repo
+Interview Tracker/data/*.xlsx
+Interview Tracker/data/*.xls
+Interview Tracker/data/*.csv
