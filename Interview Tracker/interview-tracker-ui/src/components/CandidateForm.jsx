@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FIELD_GROUPS, ALL_FIELDS, emptyCandidate, coerceDates, splitName, composeName, composeInterview, splitInterview } from '../config/fields.js'
+import { FIELD_GROUPS, ALL_FIELDS, emptyCandidate, coerceDates, splitName, composeName, composeInterview, splitInterview, findDuplicate } from '../config/fields.js'
 import { parseResume, validateResumeFile, RESUME_ACCEPT } from '../utils/parseResume.js'
 
 const REQUIRED = ALL_FIELDS.filter(f => f.required)
@@ -24,6 +24,15 @@ function formValueFor(form, key) {
 }
 const norm = v => String(v ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
 
+// A stored value that isn't one of the configured options (a recruiter who
+// joined after the roster was written, a status from an imported sheet) would
+// render the <select> blank and be silently wiped on save. Keep it as an
+// extra option so it stays visible and survives an edit.
+function optionsFor(field, value) {
+  const v = String(value ?? '')
+  return v && !field.options.includes(v) ? [...field.options, v] : field.options
+}
+
 // Title-case a client name: each word's first letter uppercased, rest lower —
 // so any casing the user types collapses to one canonical spelling.
 const titleCaseClient = v =>
@@ -32,7 +41,7 @@ const titleCaseClient = v =>
     .replace(/\b\p{L}/gu, ch => ch.toUpperCase())
 
 // Add or edit a candidate. Controlled form driven by FIELD_GROUPS config.
-export default function CandidateForm({ initial, onSave, onCancel }) {
+export default function CandidateForm({ initial, existing = [], onSave, onCancel }) {
   const [form, setForm] = useState(emptyCandidate())
   const [resume, setResume] = useState(null)   // { busy?, type, text } upload status
   const [resumeData, setResumeData] = useState(null) // { fileName, text, parsed, isPdf, url }
@@ -174,7 +183,29 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
     // Normalise the client name to Title Case regardless of how it was typed
     // ("acme" / "ACME" / "aCmE" -> "Acme") so the same client is never split
     // into separate groups in the dashboard and filters.
-    doSave({ ...form, client: titleCaseClient(form.client) })
+    const rec = composeName({ ...form, client: titleCaseClient(form.client) })
+
+    // Duplicate guard: same email, phone or name+client as an existing record.
+    // Blocked by default; the recruiter can override deliberately (e.g. the
+    // same person genuinely submitted against a second requirement).
+    const dup = findDuplicate(rec, existing)
+    if (dup) {
+      const who = dup.candidate.name || dup.candidate.email || 'an existing candidate'
+      setPopup({
+        title: 'Duplicate candidate',
+        lines: [
+          `This candidate matches ${who}${dup.candidate.candId ? ` (${dup.candidate.candId})` : ''} by ${dup.reason}.`,
+          `Existing record — client: ${dup.candidate.client || '—'} · status: ${dup.candidate.status || '—'} · recruiter: ${dup.candidate.recruiter || '—'}.`,
+          'Edit that record instead, or save anyway if this is a genuinely separate submission.'
+        ],
+        actions: [
+          { label: 'Cancel', run: () => setPopup(null) },
+          { label: 'Save Anyway', primary: true, run: () => { setPopup(null); doSave(rec) } }
+        ]
+      })
+      return
+    }
+    doSave(rec)
   }
 
   const splitting = showPreview && resumeData
@@ -226,7 +257,7 @@ export default function CandidateForm({ initial, onSave, onCancel }) {
                 <span>{f.label}{f.required && <em className="req">*</em>}</span>
                 {f.type === 'select' ? (
                   <select value={form[f.key] ?? ''} onChange={e => set(f.key, e.target.value)}>
-                    {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                    {optionsFor(f, form[f.key]).map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 ) : (
                   <input

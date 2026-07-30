@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { sampleCandidates } from './data/sampleCandidates.js'
-import { CANDIDATE_STATUS, ALL_FIELDS, normalizeStatus, normalizeRecruiter, generateIds, toISODate } from './config/fields.js'
+import { demoCandidates } from './data/demoCandidates.js'
+import { isDemo, enterDemo, exitDemo, resetDemoData, DEMO_STORE_KEY } from './config/demo.js'
+import { CANDIDATE_STATUS, ALL_FIELDS, normalizeStatus, normalizeRecruiter, syncNames, findDuplicate, fillBlanks, generateIds, toISODate } from './config/fields.js'
 import { exportExcel, mailtoSummary, openTeamsShare } from './utils/share.js'
+import { promoteExtras } from './utils/parseFile.js'
 import { fetchCandidates, saveCandidates, logDeletion } from './utils/store.js'
 import Dashboard from './components/Dashboard.jsx'
 import CandidateForm from './components/CandidateForm.jsx'
@@ -11,17 +14,25 @@ import AuditLog from './components/AuditLog.jsx'
 
 const STORE_KEY = 'interview-tracker-candidates'
 const EMPTY_FILTER = { key: '', value: '', label: '', test: null }
-const migrate = list => list.map(c => ({
-  ...c,
-  status: normalizeStatus(c.status),
-  recruiter: normalizeRecruiter(c.recruiter)
-}))
+const migrate = list => list.map(raw => {
+  // promoteExtras first: it recovers values (e.g. recruiter) that an older
+  // import parked under an unrecognised column header.
+  const c = promoteExtras(raw)
+  return {
+    ...syncNames(c),
+    status: normalizeStatus(c.status),
+    recruiter: normalizeRecruiter(c.recruiter)
+  }
+})
 
 export default function App() {
+  // Demo mode: anonymized seed, sessionStorage sandbox, no backend calls.
+  const demo = isDemo()
+  const seedList = demo ? demoCandidates : sampleCandidates
   // Seed initial paint from the offline cache; the shared store loads next.
   const [candidates, setCandidates] = useState(() => {
-    const saved = localStorage.getItem(STORE_KEY)
-    return migrate(saved ? JSON.parse(saved) : sampleCandidates)
+    const saved = demo ? sessionStorage.getItem(DEMO_STORE_KEY) : localStorage.getItem(STORE_KEY)
+    return migrate(saved ? JSON.parse(saved) : seedList)
   })
   const [loaded, setLoaded] = useState(false)
   // dirtyRef: user has edited -> a late initial fetch must not clobber.
@@ -64,9 +75,19 @@ export default function App() {
           return
         }
         if (list.length) {
-          setCandidates(migrate(list))
+          const next = migrate(list)
+          setCandidates(next)
+          // migrate may have recovered fields the stored records were missing;
+          // persist that repair so every user sees it, not just this session.
+          const repaired = next.filter((c, i) => JSON.stringify(c) !== JSON.stringify(list[i])).length
+          if (repaired) {
+            dirtyRef.current = true
+            saveCandidates(next)
+              .then(() => setNotice({ type: 'ok', text: `♻️ Recovered details on ${repaired} record(s) from imported columns and saved to the database.` }))
+              .catch(() => {})
+          }
         } else {
-          const seed = migrate(sampleCandidates)  // empty DB -> seed once
+          const seed = migrate(seedList)          // empty DB -> seed once
           setCandidates(seed)
           saveCandidates(seed).catch(() => {})
         }
@@ -77,9 +98,12 @@ export default function App() {
   }, [])
 
   // Offline cache (paint + resilience) — always safe, never touches the DB.
+  // In demo mode the sandbox in store.js owns persistence (sessionStorage), so
+  // the real cache is left untouched.
   useEffect(() => {
+    if (demo) return
     localStorage.setItem(STORE_KEY, JSON.stringify(candidates))
-  }, [candidates])
+  }, [candidates, demo])
 
   // Persist to the DB ONLY for genuine user edits, and only once the initial
   // load succeeded. Debounced so rapid edits collapse into one write.
@@ -92,13 +116,14 @@ export default function App() {
   // Flush pending edits on tab close / reload so nothing is lost mid-debounce.
   useEffect(() => {
     const flush = () => {
+      if (demo) return                            // demo never posts to the API
       if (!dirtyRef.current || !canWriteRef.current || !navigator.sendBeacon) return
       navigator.sendBeacon('/api/candidates',
         new Blob([JSON.stringify({ candidates: candidatesRef.current })], { type: 'application/json' }))
     }
     window.addEventListener('beforeunload', flush)
     return () => window.removeEventListener('beforeunload', flush)
-  }, [])
+  }, [demo])
 
   // Active = everything not soft-deleted. Every view, count, and export uses
   // this; the full `candidates` list (incl. deleted rows) is what gets persisted.
@@ -141,7 +166,12 @@ export default function App() {
     setNotice({ type: 'info', text: `${exists ? 'Updating' : 'Saving'} "${who}"…` })
     try {
       await saveCandidates(next)               // <-- explicit, awaited DB write
-      setNotice({ type: 'ok', text: `✅ "${who}" ${verb} database (${rec.candId}). Changes are live for all users.` })
+      setNotice({
+        type: 'ok',
+        text: demo
+          ? `✅ "${who}" ${exists ? 'updated' : 'saved'} in this demo session (${rec.candId}). Nothing leaves your browser.`
+          : `✅ "${who}" ${verb} database (${rec.candId}). Changes are live for all users.`
+      })
     } catch (e) {
       setNotice({ type: 'err', text: `❌ Could not save "${who}" to the database: ${e.message}. Change kept locally — retry when back online.` })
     }
@@ -195,13 +225,69 @@ export default function App() {
       setNotice({ type: 'err', text: `❌ Could not delete "${who}": ${e.message}.` })
     }
   }
-  const importCandidates = rows => mutate(prev => [...migrate(rows), ...prev])
+  // Import with duplicate validation: an incoming row is a duplicate when it
+  // matches an existing candidate — or an earlier row of the same file — by
+  // email, phone, or name+client.
+  //
+  //   mode 'skip'   (default) duplicates are rejected and reported.
+  //   mode 'update'           duplicates fill BLANK fields on the existing
+  //                           record (never overwriting anything already set).
+  //                           Repairs rows imported before a column was mapped.
+  //   mode 'replace'          every value the sheet carries wins over what is
+  //                           stored. Blank cells in the sheet still never
+  //                           erase a stored value. Use to correct wrong data.
+  //
+  // Returns a summary for the Import panel.
+  const importCandidates = (rows, mode = 'skip') => {
+    const incoming = migrate(rows)
+    const prev = candidatesRef.current
+    const added = []
+    const duplicates = []
+    const updates = new Map()   // existing id -> merged record
+    const updated = []          // { name, candId, filled[] }
+
+    incoming.forEach(rec => {
+      const pool = [...prev.map(c => updates.get(c.id) || c), ...added]
+      const hit = findDuplicate(rec, pool)
+      if (!hit) { added.push(rec); return }
+      if (mode !== 'update' && mode !== 'replace') {
+        duplicates.push({ name: rec.name || rec.email || 'row', reason: hit.reason, existing: hit.candidate })
+        return
+      }
+      const base = updates.get(hit.candidate.id) || hit.candidate
+      // 'replace' lets every sheet value win. In 'update', Date Sourced is the
+      // one field the sheet still overrides — rows imported before the Date
+      // column was mapped hold the day the import ran, not the real date.
+      const overwrite = mode === 'replace' ? ALL_FIELDS.map(f => f.key) : ['dateSourced']
+      const { rec: merged, filled } = fillBlanks(base, rec, overwrite)
+      if (filled.length) {
+        updates.set(hit.candidate.id, merged)
+        updated.push({ name: merged.name || merged.email || 'row', candId: merged.candId || '', filled })
+      } else {
+        duplicates.push({ name: rec.name || rec.email || 'row', reason: `${hit.reason} — nothing to fill`, existing: hit.candidate })
+      }
+    })
+
+    if (added.length || updates.size) {
+      mutate(prevList => {
+        const merged = prevList.map(c => updates.get(c.id) || c)
+        const next = [...added, ...merged]
+        // Backfill Cand ID / Req ID on any record still missing one (rows
+        // imported before IDs were assigned). Each assignment is fed back in
+        // so the running maximum — and therefore every new ID — stays unique.
+        const out = []
+        next.forEach(c => out.push(c.candId && c.reqId ? c : generateIds(c, [...next, ...out])))
+        return out
+      })
+    }
+    return { added: added.length, updated: updated.length, updates: updated, total: incoming.length, duplicates }
+  }
   // Non-destructive recovery: re-add any sample/test candidates missing from the
   // current dataset (e.g. ones removed before soft-delete existed). Existing
   // records are matched by Cand ID and never overwritten.
   const restoreSamples = () => {
     const have = new Set(candidatesRef.current.map(c => c.candId || c.id))
-    const missing = migrate(sampleCandidates).filter(s => !have.has(s.candId || s.id))
+    const missing = migrate(seedList).filter(s => !have.has(s.candId || s.id))
     if (!missing.length) { setNotice({ type: 'ok', text: 'Sample candidates already present — nothing to restore.' }); return }
     const next = [...candidatesRef.current, ...missing]
     dirtyRef.current = true
@@ -242,6 +328,21 @@ export default function App() {
           )}
         </div>
       )}
+      {demo && (
+        <div className="demo-banner" role="status">
+          <span className="demo-pill">DEMO</span>
+          <span className="demo-text">
+            Sample (anonymized) data — add, edit and delete freely. Changes never reach the
+            shared database and are discarded on every reload.
+          </span>
+          <button className="btn ghost demo-exit" onClick={resetDemoData}
+            title="Discard everything added or edited here and reload the original sample data">
+            Reset data
+          </button>
+          <button className="btn ghost demo-exit" onClick={exitDemo}>Exit demo</button>
+        </div>
+      )}
+
       <header className="topbar">
         <div>
           <h1>Interview Tracker</h1>
@@ -253,6 +354,10 @@ export default function App() {
           <button className="icon-btn" onClick={() => { window.location.href = mailtoSummary(active) }} title="Mail" aria-label="Mail">✉️</button>
           <button className="icon-btn" onClick={() => openTeamsShare(active)} title="Teams" aria-label="Teams">👥</button>
           <button className="icon-btn ghost" onClick={restoreSamples} title="Restore sample candidates" aria-label="Restore sample candidates">♻️</button>
+          {!demo && (
+            <button className="icon-btn ghost" onClick={enterDemo}
+              title="Try the demo — anonymized data, changes stay local" aria-label="Try the demo">🎬</button>
+          )}
         </div>
       </header>
 
@@ -264,7 +369,7 @@ export default function App() {
       </nav>
 
       {showForm ? (
-        <CandidateForm initial={editing} onSave={saveCandidate}
+        <CandidateForm initial={editing} existing={candidates} onSave={saveCandidate}
           onCancel={() => { setShowForm(false); setEditing(null) }} />
       ) : (
         <>
@@ -334,7 +439,9 @@ export default function App() {
       )}
 
       <footer className="foot">
-        Shared candidate data syncs across all users. Drop the Submission Log Excel into the <code>data/</code> folder, then use Import.
+        {demo
+          ? <>Demo mode — anonymized sample data in a private sandbox. Every reload starts again from the original 92 records.</>
+          : <>Shared candidate data syncs across all users. Drop the Submission Log Excel into the <code>data/</code> folder, then use Import.</>}
       </footer>
     </div>
   )

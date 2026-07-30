@@ -1,18 +1,44 @@
 // Dashboard-level sharing: Excel export, email summary, Teams share.
 import * as XLSX from 'xlsx'
-import { ALL_FIELDS } from '../config/fields.js'
+import { ALL_FIELDS, syncNames } from '../config/fields.js'
+
+// Fields kept in the app but left out of the shared Excel. Date Submitted
+// duplicates Date Sourced in practice, so the report omits it.
+const EXPORT_SKIP = new Set(['dateSubmitted'])
+const EXPORT_FIELDS = ALL_FIELDS.filter(f => !EXPORT_SKIP.has(f.key))
 
 // Build a worksheet row set from candidates using human labels as headers.
+// syncNames fills First/Last Name for records that only carry a single `name`
+// (the seed log and most imported sheets), so no name column exports blank.
+//
+// Any column an imported sheet carried that has no field of its own was kept in
+// `extras`; those headers are appended after the standard columns so the export
+// contains every column the import did.
 function toRows(candidates) {
-  return candidates.map(c => {
-    const o = {}
-    ALL_FIELDS.forEach(f => { o[f.label] = c[f.key] ?? '' })
+  const extraHeaders = []
+  candidates.forEach(c => {
+    Object.keys(c.extras || {}).forEach(h => { if (!extraHeaders.includes(h)) extraHeaders.push(h) })
+  })
+  const rows = candidates.map(c => {
+    const rec = syncNames(c)
+    // "Candidate Name" is exported alongside First/Last so a sheet imported
+    // with a single name column comes back out in the same shape.
+    const o = { 'Cand ID': rec.candId || '', 'Req ID': rec.reqId || '', 'Candidate Name': rec.name || '' }
+    EXPORT_FIELDS.forEach(f => { o[f.label] = rec[f.key] ?? "" })
+    extraHeaders.forEach(h => { o[h] = (rec.extras || {})[h] ?? '' })
     return o
   })
+  return {
+    rows,
+    headers: ["Cand ID", "Req ID", "Candidate Name", ...EXPORT_FIELDS.map(f => f.label), ...extraHeaders]
+  }
 }
 
 export function exportExcel(candidates, filename = 'Interview_Tracker.xlsx') {
-  const ws = XLSX.utils.json_to_sheet(toRows(candidates))
+  const { rows, headers } = toRows(candidates)
+  // Explicit header order: json_to_sheet would otherwise infer it from the
+  // first row alone and drop columns only later rows carry.
+  const ws = XLSX.utils.json_to_sheet(rows, { header: headers })
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Submission Log')
   XLSX.writeFile(wb, filename)

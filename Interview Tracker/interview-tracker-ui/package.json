@@ -6,6 +6,8 @@
   "description": "Interview Tracker UI - Candidates Submission Log dashboard, export & sharing",
   "scripts": {
     "dev": "vite",
+    "demo": "vite --open /?demo=1",
+    "demo:data": "node scripts/build-demo-data.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

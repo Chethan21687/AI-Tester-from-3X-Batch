@@ -76,6 +76,40 @@ body::after {
 .sub { margin: 4px 0 0; color: var(--muted); }
 .topbar-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+/* Demo-mode banner (?demo=1) */
+.demo-banner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 16px; padding: 10px 14px; border-radius: 12px;
+  background: linear-gradient(90deg, #fef3c7, #fde68a);
+  border: 1px solid var(--warn); color: #78350f; font-size: 13px; font-weight: 600;
+}
+.demo-pill {
+  flex: none; padding: 3px 10px; border-radius: 999px; letter-spacing: .6px;
+  background: var(--warn); color: #fff; font-size: 11px; font-weight: 800;
+}
+.demo-text { flex: 1 1 260px; }
+.demo-exit { flex: none; border-color: var(--warn); color: #78350f; }
+
+/* Import duplicate-handling mode picker */
+.import-mode { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-bottom: 14px; }
+.import-mode .im-label { flex: 1 1 100%; font-size: 12px; font-weight: 700; color: var(--muted); }
+.im-opt { flex: 1 1 240px; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel-2); cursor: pointer; }
+.im-opt.on { border-color: var(--brand-2); background: #eef2ff; }
+.im-opt input { grid-row: span 2; align-self: center; }
+.im-opt b { font-size: 13px; }
+.im-opt small { grid-column: 2; color: var(--muted); font-size: 11px; line-height: 1.4; }
+
+/* Skipped-duplicates report under the Import dropzone */
+.dupe-report { margin-top: 14px; padding: 12px; border-radius: 10px;
+  background: #fff7ed; border: 1px solid var(--warn); }
+.dupe-report h4 { margin: 0 0 8px; font-size: 13px; color: #7c2d12; }
+.dupe-report table { font-size: 12px; }
+.dupe-report .hint { display: block; margin-top: 8px; color: #7c2d12; }
+.dupe-report.ok { background: #f0fdf4; border-color: var(--ok); }
+.dupe-report.ok h4 { color: #14532d; }
+
 /* Signed-in user chip */
 .user-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px;
   background: rgba(255,255,255,.7); border: 1px solid var(--line); border-radius: 999px; font-size: 13px; }

@@ -12,6 +12,7 @@ const COLUMNS = [
   { key: 'totalExp', label: 'Total Exp' },
   { key: 'noticePeriod', label: 'Notice' },
   { key: 'location', label: 'Location' },
+  { key: 'preferredLocation', label: 'Preferred Loc' },
   { key: 'currentCTC', label: 'Cur CTC' },
   { key: 'expectedCTC', label: 'Exp CTC' },
   { key: 'offeredCTC', label: 'Offered' },
