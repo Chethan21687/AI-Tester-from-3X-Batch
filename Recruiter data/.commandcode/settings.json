@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(tar:*)",
+      "Shell(dir:*)",
+      "powershell",
+      "Shell(curl.exe:*)",
+      "Shell(echo.:*)",
+      "Shell(python -c import sys,json; d=json.load(sys.stdin); print('Roshini candidates:', len(d['candidates'])); print('Sample:', d['candidates'][0]['name'], '|', d['candidates'][0]['status'], '|', d['candidates'][0]['date']))",
+      "Shell(npm:*)",
+      "Shell(findstr:*)",
+      "Shell(more:*)",
+      "Shell(rmdir:*)",
+      "Shell(del:*)",
+      "Shell(kill:*)",
+      "Shell(mongodb\\bin\\mongod.exe:*)",
+      "Shell(node shot.cjs)",
+      "Shell(python -X utf8 make_dup.py)",
+      "Shell(python -c import sys,json; d=json.load(sys.stdin); [print(s.get('id','NO ID'), '|', s['recruiter']) for s in d['stats']])",
+      "Shell(python -c import sys,json; d=json.load(sys.stdin); print('total:', d['total_candidates']); print('pipeline:', d['pipeline']); print('decisions:', d['decisions']); print('sources:', d['sources'][:5]); print('monthly:', [m for m in d['monthly'] if m['count']]); print('vacancy:', d['vacancy']))"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

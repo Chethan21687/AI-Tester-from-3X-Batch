@@ -1,0 +1,21 @@
+# MongoDB portable install
+mongodb/bin/
+mongodb/*.zip
+mongodb/data/
+
+# Python
+__pycache__/
+*.pyc
+backend/.venv/
+.venv/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Scratch
+*.log
