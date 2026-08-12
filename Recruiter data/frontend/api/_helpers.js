@@ -6,10 +6,12 @@ const MONTH_MAP = {
 }
 
 // A candidate's date is stored as text in the "3rd Aug 2026" style. Parse out
-// the month number and year so dashboard/candidate filters can match on them.
-// Returns { month, year } or null when the date can't be parsed.
+// the day, month number and year so dashboard/candidate filters and latest-date
+// comparisons can match on them.
+// Returns { day, month, year } or null when the date can't be parsed.
 export function parseDateParts(dateStr) {
   const parts = String(dateStr || '').trim().split(/\s+/)
+  let day = null
   let month = null
   let year = null
   for (const token of parts) {
@@ -17,9 +19,11 @@ export function parseDateParts(dateStr) {
     if (m) month = m
     const y = token.match(/(19|20)\d{2}/)
     if (y) year = Number(y[0])
+    const d = token.match(/^(\d{1,2})(?:st|nd|rd|th)?$/i)
+    if (d) day = Number(d[1])
   }
-  if (month === null || year === null) return null
-  return { month, year }
+  if (day === null || month === null || year === null) return null
+  return { day, month, year }
 }
 
 export function candidateToDict(doc) {

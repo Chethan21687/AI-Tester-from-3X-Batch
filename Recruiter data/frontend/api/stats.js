@@ -4,6 +4,11 @@
 import { getCandidatesCollection, getRecruitersCollection, requireMongo } from './_mongo.js'
 import { parseDateParts } from './_helpers.js'
 
+// Convert { day, month, year } into a sortable number.
+function partsToValue(parts) {
+  return parts.year * 10000 + parts.month * 100 + parts.day
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
@@ -44,7 +49,14 @@ export default async function handler(req, res) {
     if (d.client) g.clients.add(d.client)
     g.statuses.add(d.status || '')
     g.status_counts.push(d.status || '')
-    if (d.date && d.date > g.latest_date) g.latest_date = d.date
+    // Latest date: compare parsed dates, not raw strings.
+    if (d.date) {
+      const parts = parseDateParts(d.date)
+      const cur = g.latest_date ? parseDateParts(g.latest_date) : null
+      if (parts && (!cur || partsToValue(parts) > partsToValue(cur))) {
+        g.latest_date = d.date
+      }
+    }
   }
 
   const stats = []

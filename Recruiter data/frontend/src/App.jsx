@@ -2,6 +2,31 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as api from './api'
 import './App.css'
 
+/* ---------- Date helpers ---------- */
+const MONTH_INDEX = {
+  Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+  Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+}
+
+// Parse "3rd Aug 2026" (or "12th Aug 2026") into a comparable Date; returns
+// null when the string can't be parsed. Used for sorting and latest-date.
+function parseDateLabel(dateStr) {
+  const parts = String(dateStr || '').trim().split(/\s+/)
+  let day = null
+  let month = null
+  let year = null
+  for (const token of parts) {
+    const m = MONTH_INDEX[token.slice(0, 3)]
+    if (m !== undefined) month = m
+    const y = token.match(/(19|20)\d{2}/)
+    if (y) year = Number(y[0])
+    const d = token.match(/^(\d{1,2})(st|nd|rd|th)?$/i)
+    if (d) day = Number(d[1])
+  }
+  if (day === null || month === null || year === null) return null
+  return new Date(year, month, day)
+}
+
 /* ---------- Status badge colors ---------- */
 const STATUS_COLORS = {
   Screening: { bg: '#e0f2fe', fg: '#075985' },
@@ -313,7 +338,13 @@ function KpiStrip({ stats, sources, onOpenClients }) {
   // Distinct clients come from the sources-of-applications breakdown so the
   // count matches the dashboard donut.
   const totalClients = sources ? sources.length : 0
-  const latestDate = stats.reduce((max, s) => (s.latest_date > max ? s.latest_date : max), '')
+  // Latest data date: compare parsed dates, not raw strings (so "12th Aug"
+  // beats "8th Aug" instead of the other way around).
+  const latestDate = stats.reduce((max, s) => {
+    if (!s.latest_date) return max
+    const d = parseDateLabel(s.latest_date)
+    return d && (!max.maxDate || d > max.maxDate) ? { value: s.latest_date, maxDate: d } : max
+  }, null)?.value || ''
 
   const kpis = [
     { label: 'Total candidates', value: totalCandidates, onClick: null },
@@ -1180,7 +1211,16 @@ function Dashboard({ stats, selected, onSelect, onRefreshStats, onDeleteRecruite
           month: month || undefined,
           year: year || undefined,
         })
-        if (!cancelled) setCandidates(data.candidates)
+        if (!cancelled) {
+          // Sort by application date ascending (chronological, not lexical).
+          const sorted = [...(data.candidates || [])].sort((a, b) => {
+            const da = parseDateLabel(a.date)
+            const db = parseDateLabel(b.date)
+            if (da && db) return da - db
+            return String(a.date || '').localeCompare(String(b.date || ''))
+          })
+          setCandidates(sorted)
+        }
       } catch (err) {
         if (!cancelled) setCandidates([])
       } finally {

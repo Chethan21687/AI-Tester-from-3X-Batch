@@ -69,16 +69,24 @@ const TEXT_COLUMNS = new Set([
   'date',
 ])
 
+function toDateLabel(dt) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `${dt.getUTCDate()} ${months[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`
+}
+
 function toText(value) {
   if (value === undefined || value === null) return ''
-  // Dates: keep them as text (e.g. "3rd Aug 2026"). SheetJS gives a number for
-  // real date cells; convert via the workbook's date format so the value
-  // matches what pandas produced with dtype=str.
+  // Dates: keep them as text (e.g. "7 Aug 2026").
   if (value instanceof Date) {
-    const pad = (n) => String(n).padStart(2, '0')
-    return `${pad(value.getUTCDate())}/${pad(value.getUTCMonth() + 1)}/${value.getUTCFullYear()}`
+    return toDateLabel(value)
   }
   if (typeof value === 'number') {
+    // Excel date serial (e.g. 46234) — convert to a date label. SheetJS reads
+    // date cells as serial numbers unless cellDates is on.
+    if (Number.isInteger(value) && value > 20000 && value < 80000) {
+      const epoch = Date.UTC(1899, 11, 30)
+      return toDateLabel(new Date(epoch + value * 86400000))
+    }
     // Phone numbers / integer-valued floats: format without decimals.
     if (Number.isInteger(value)) return String(value)
     return String(value)

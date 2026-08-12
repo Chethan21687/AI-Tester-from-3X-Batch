@@ -85,6 +85,16 @@ def _to_text(value) -> str:
     # pandas may read phone numbers as ints/floats; format them without decimals
     if isinstance(value, float) and value.is_integer():
         return str(int(value))
+    if isinstance(value, (datetime, pd.Timestamp)):
+        return value.strftime("%-d %b %Y").replace(" 0", " ")  # "7 Aug 2026"
+    # A bare Excel date serial (e.g. 46234) — convert to a date label.
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        num = float(value)
+        if 20000 < num < 80000:
+            # Excel epoch: 1899-12-30 for the serial day count.
+            from datetime import timedelta
+            dt = datetime(1899, 12, 30) + timedelta(days=num)
+            return dt.strftime("%d %b %Y").lstrip("0")  # "7 Aug 2026"
     return str(value).strip()
 
 

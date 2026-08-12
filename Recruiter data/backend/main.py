@@ -223,6 +223,26 @@ def delete_recruiter(recruiter_id: str):
 
 # ---------- Stats ----------
 
+# Parse the "3rd Aug 2026" label into a sortable (year, month, day) tuple.
+# A plain string comparison would rank "8th Aug 2026" above "12th Aug 2026".
+def date_sort_key(label: str) -> tuple:
+    day = month = year = None
+    for token in str(label or "").split():
+        m = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+             "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}.get(token[:3])
+        if m:
+            month = m
+        y = re.search(r"(19|20)\d{2}", token)
+        if y:
+            year = int(y.group())
+        d = re.match(r"^(\d{1,2})(?:st|nd|rd|th)?$", token, re.IGNORECASE)
+        if d:
+            day = int(d.group(1))
+    if day is None or month is None or year is None:
+        return (0, 0, 0)
+    return (year, month, day)
+
+
 @app.get("/api/stats")
 def get_stats():
     """Per-recruiter daily value stats computed over the candidates collection."""
@@ -232,34 +252,36 @@ def get_stats():
     recruiter_names = [r["name"] for r in recruiters.find({}, {"name": 1})]
     recruiter_ids = {r["name"]: str(r["_id"]) for r in recruiters.find({}, {"name": 1, "_id": 1})}
 
-    pipeline = [
-        {"$group": {
-            "_id": "$recruiter",
-            "candidates": {"$sum": 1},
-            "clients": {"$addToSet": "$client"},
-            "statuses": {"$addToSet": "$status"},
-            "status_counts": {"$push": "$status"},
-            "latest_date": {"$max": "$date"},
-        }},
-        {"$sort": {"_id": 1}},
-    ]
-    agg = {doc["_id"]: doc for doc in candidates.aggregate(pipeline)}
+    docs = list(candidates.find({}, {"recruiter": 1, "status": 1, "client": 1, "date": 1}))
+    grouped: dict = {}
+    for doc in docs:
+        name = doc.get("recruiter", "")
+        group = grouped.setdefault(name, {"candidates": 0, "clients": set(), "statuses": set(), "status_counts": [], "latest_date": "", "latest_key": (0, 0, 0)})
+        group["candidates"] += 1
+        if doc.get("client"):
+            group["clients"].add(doc["client"])
+        group["statuses"].add(doc.get("status", ""))
+        group["status_counts"].append(doc.get("status", ""))
+        label = doc.get("date", "")
+        key = date_sort_key(label)
+        if key > group["latest_key"]:
+            group["latest_key"] = key
+            group["latest_date"] = label
 
     stats = []
     for name in sorted(recruiter_names):
-        doc = agg.get(name, {})
-        statuses = [s for s in doc.get("statuses", []) if s]
-        # Count candidates per status (empty status counted as "No status")
+        group = grouped.get(name, {})
+        statuses = [s for s in group.get("statuses", set()) if s]
         status_counts: dict = {}
-        for status in doc.get("status_counts", []):
+        for status in group.get("status_counts", []):
             key = status or "No status"
             status_counts[key] = status_counts.get(key, 0) + 1
         stats.append({
             "id": recruiter_ids.get(name, ""),
             "recruiter": name,
-            "candidates": doc.get("candidates", 0),
-            "clients": len(doc.get("clients", [])),
-            "latest_date": doc.get("latest_date", ""),
+            "candidates": group.get("candidates", 0),
+            "clients": len(group.get("clients", set())),
+            "latest_date": group.get("latest_date", ""),
             "statuses": statuses,
             "status_counts": status_counts,
         })
@@ -436,7 +458,9 @@ def list_candidates(recruiter: Optional[str] = None, date: Optional[str] = None)
     if date:
         query["date"] = date
 
-    docs = list(candidates.find(query).sort("date", -1).limit(2000))
+    docs = list(candidates.find(query).limit(2000))
+    # Sort by application date ascending (chronological, not lexical).
+    docs.sort(key=lambda d: date_sort_key(d.get("date", "")))
     return {"candidates": [candidate_to_dict(d) for d in docs]}
 
 
@@ -536,7 +560,9 @@ def export_candidates(recruiter: Optional[str] = None, date: Optional[str] = Non
     if date:
         query["date"] = date
 
-    docs = list(candidates.find(query).sort("date", -1).limit(2000))
+    docs = list(candidates.find(query).limit(2000))
+    # Sort by application date ascending (chronological, not lexical).
+    docs.sort(key=lambda d: date_sort_key(d.get("date", "")))
 
     # Same column layout as the uploaded workbook.
     columns = [
