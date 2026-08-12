@@ -53,8 +53,8 @@ function Breakdown({ title, data, fieldKey, onPick, colored }) {
 
 export default function Dashboard({ candidates, onSelect, onTile }) {
   const total = candidates.length
-  const isInterview = c => /scheduled|tbs|yet to schedule/i.test(c.status || '')
-  const isRejected = c => /reject|drop-out|duplicate/i.test(c.status || '')
+  const isInterview = c => /scheduled|tbs|fbp|yet to schedule/i.test(c.status || '')
+  const isRejected = c => /reject|drop|duplicate/i.test(c.status || '')
   const submitted = candidates.filter(c => c.status === 'Submit to Client').length
   const inInterview = candidates.filter(isInterview).length
   const joined = candidates.filter(c => c.status === 'Joined').length

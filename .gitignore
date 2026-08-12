@@ -3,3 +3,6 @@
 Interview Tracker/data/*.xlsx
 Interview Tracker/data/*.xls
 Interview Tracker/data/*.csv
+
+.vercel
+.env*

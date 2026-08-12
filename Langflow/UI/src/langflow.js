@@ -2,7 +2,10 @@
 // All calls go through cfg.baseUrl ('' in dev → Vite proxy to :7860).
 
 export function authHeaders(apiKey) {
-  return apiKey && apiKey.trim() ? { 'x-api-key': apiKey.trim() } : {}
+  // ngrok-skip-browser-warning bypasses ngrok's free-tier interstitial HTML page,
+  // which would otherwise make JSON responses unparseable through the tunnel.
+  const base = { 'ngrok-skip-browser-warning': 'true' }
+  return apiKey && apiKey.trim() ? { ...base, 'x-api-key': apiKey.trim() } : base
 }
 
 // Parse a response as JSON, but give a useful error when the server returns

@@ -3,28 +3,34 @@
 // plus interview-scheduling fields (date / mode / duration).
 
 export const CANDIDATE_STATUS = [
-  'Duplicate',
-  'Submit to Client',
-  'Screen Reject',
-  'Screen Select',
-  'Internal Review',
-  'L1 Select',
+  'Screening',
+  'Screening Select',
+  'Screening Reject',
+  'Screening FBP',
   'L1 Reject',
-  'L1 TBS',
+  'L1 Select',
   'L1 Scheduled',
-  'L1 Yet to Schedule',
-  'L2 Select',
+  'L1 TBS',
+  'L1 FBP',
   'L2 Reject',
-  'L2 TBS',
+  'L2 Select',
   'L2 Scheduled',
-  'L2 Yet to Schedule',
+  'L2 TBS',
+  'L2 FBP',
   'Final Reject',
   'Final Select',
-  'On Hold',
-  'Drop-Out',
-  'Offer Accepted',
-  'Offer Rejected',
-  'Joined'
+  'Final Scheduled',
+  'Final TBS',
+  'Final FBP',
+  'Client Hold',
+  'Req Hold',
+  'Candidate Drop',
+  'Offered',
+  'Offer drop',
+  'Joined',
+  'Internal Review',
+  'Submit to Client',
+  'Duplicate',
 ]
 
 // Maps legacy/imported status labels to the current CANDIDATE_STATUS values.
@@ -32,15 +38,21 @@ export const STATUS_REMAP = {
   'sourced': 'Internal Review',
   'submitted to client': 'Submit to Client',
   'client reviewing': 'Submit to Client',
+  'screen select': 'Screening Select',
+  'screen reject': 'Screening Reject',
   'interview scheduled': 'L2 Scheduled',
   'in interview': 'L2 Scheduled',
   'selected': 'Final Select',
-  'on-hold': 'On Hold',
-  'dropped out': 'Drop-Out',
-  'no-show': 'Drop-Out',
-  'rejected - tech': 'Screen Reject',
-  'rejected - rate': 'Screen Reject',
-  'rejected - notice': 'Screen Reject'
+  'on-hold': 'Client Hold',
+  'on hold': 'Client Hold',
+  'dropped out': 'Candidate Drop',
+  'drop-out': 'Candidate Drop',
+  'no-show': 'Candidate Drop',
+  'offer accepted': 'Offered',
+  'offer rejected': 'Offer drop',
+  'rejected - tech': 'Screening Reject',
+  'rejected - rate': 'Screening Reject',
+  'rejected - notice': 'Screening Reject'
 }
 
 export function normalizeStatus(v) {
@@ -52,9 +64,9 @@ export function normalizeStatus(v) {
 // Pill colour class for a status value.
 export function statusClass(v) {
   const s = (v || '').toLowerCase()
-  if (s.includes('select') || s === 'joined' || s === 'offer accepted' || s === 'closed') return 'pill ok'
-  if (s.includes('reject') || s === 'drop-out' || s === 'duplicate') return 'pill bad'
-  if (s === 'on hold' || s.includes('tbs') || s.includes('yet to schedule')) return 'pill idle'
+  if (s.includes('select') || s === 'joined' || s === 'offered' || s.includes('offer accepted') || s === 'closed') return 'pill ok'
+  if (s.includes('reject') || s.includes('drop') || s === 'duplicate') return 'pill bad'
+  if (s === 'on hold' || s.includes('hold') || s.includes('tbs') || s.includes('fbp') || s.includes('scheduled') || s.includes('yet to schedule')) return 'pill idle'
   return 'pill warn'
 }
 
