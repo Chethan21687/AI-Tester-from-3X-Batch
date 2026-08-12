@@ -56,12 +56,12 @@ export default async function handler(req, res) {
       return true
     })
   }
-  // Sort by application date ascending (chronological, not lexical).
+  // Sort by application date descending (newest first).
   docs = docs.sort((a, b) => {
     const pa = parseDateParts(a.date)
     const pb = parseDateParts(b.date)
-    if (pa && pb) return partsToValue(pa) - partsToValue(pb)
-    return String(a.date || '').localeCompare(String(b.date || ''))
+    if (pa && pb) return partsToValue(pb) - partsToValue(pa)
+    return String(b.date || '').localeCompare(String(a.date || ''))
   })
 
   const rows = docs.map((doc) => {

@@ -1212,12 +1212,12 @@ function Dashboard({ stats, selected, onSelect, onRefreshStats, onDeleteRecruite
           year: year || undefined,
         })
         if (!cancelled) {
-          // Sort by application date ascending (chronological, not lexical).
+          // Sort by application date descending (newest first).
           const sorted = [...(data.candidates || [])].sort((a, b) => {
             const da = parseDateLabel(a.date)
             const db = parseDateLabel(b.date)
-            if (da && db) return da - db
-            return String(a.date || '').localeCompare(String(b.date || ''))
+            if (da && db) return db - da
+            return String(b.date || '').localeCompare(String(a.date || ''))
           })
           setCandidates(sorted)
         }

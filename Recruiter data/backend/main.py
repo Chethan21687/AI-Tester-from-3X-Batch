@@ -459,8 +459,8 @@ def list_candidates(recruiter: Optional[str] = None, date: Optional[str] = None)
         query["date"] = date
 
     docs = list(candidates.find(query).limit(2000))
-    # Sort by application date ascending (chronological, not lexical).
-    docs.sort(key=lambda d: date_sort_key(d.get("date", "")))
+    # Sort by application date descending (newest first).
+    docs.sort(key=lambda d: date_sort_key(d.get("date", "")), reverse=True)
     return {"candidates": [candidate_to_dict(d) for d in docs]}
 
 
@@ -561,8 +561,8 @@ def export_candidates(recruiter: Optional[str] = None, date: Optional[str] = Non
         query["date"] = date
 
     docs = list(candidates.find(query).limit(2000))
-    # Sort by application date ascending (chronological, not lexical).
-    docs.sort(key=lambda d: date_sort_key(d.get("date", "")))
+    # Sort by application date descending (newest first).
+    docs.sort(key=lambda d: date_sort_key(d.get("date", "")), reverse=True)
 
     # Same column layout as the uploaded workbook.
     columns = [
