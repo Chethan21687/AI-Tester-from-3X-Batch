@@ -33,3 +33,8 @@ def get_candidates_collection() -> Collection:
 def get_recruiters_collection() -> Collection:
     """Return the recruiters collection."""
     return get_db()["recruiters"]
+
+
+def get_status_logs_collection() -> Collection:
+    """Return the transaction-log collection (status changes)."""
+    return get_db()["status_logs"]

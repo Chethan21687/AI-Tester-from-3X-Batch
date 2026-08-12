@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from bson import ObjectId
 from pydantic import BaseModel
 
-from .database import get_candidates_collection, get_recruiters_collection
+from .database import get_candidates_collection, get_recruiters_collection, get_status_logs_collection
 from .excel_parser import parse_workbook
 
 app = FastAPI(title="Recruiter Tracker API")
@@ -457,15 +457,68 @@ def update_candidate_status(candidate_id: str, body: CandidateStatusIn):
     if not status:
         raise HTTPException(status_code=400, detail="Status cannot be empty")
 
-    result = candidates.update_one(
-        {"_id": obj_id},
-        {"$set": {"status": status, "updated_at": datetime.utcnow().isoformat()}},
-    )
-    if result.matched_count == 0:
+    doc = candidates.find_one({"_id": obj_id})
+    if not doc:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    doc = candidates.find_one({"_id": obj_id})
-    return candidate_to_dict(doc)
+    previous = doc.get("status", "")
+    if previous != status:
+        candidates.update_one(
+            {"_id": obj_id},
+            {"$set": {"status": status, "updated_at": datetime.utcnow().isoformat()}},
+        )
+        # Record the change in the transaction log.
+        get_status_logs_collection().insert_one(
+            {
+                "candidate_id": str(obj_id),
+                "candidate_name": doc.get("name", ""),
+                "recruiter": doc.get("recruiter", ""),
+                "from": previous,
+                "to": status,
+                "at": datetime.utcnow().isoformat(),
+            }
+        )
+
+    return candidate_to_dict(candidates.find_one({"_id": obj_id}))
+
+
+@app.get("/api/logs")
+def get_logs(recruiter: Optional[str] = None, candidate: Optional[str] = None, limit: int = 500):
+    """Transaction history: every status change on a candidate, newest first."""
+    query: dict = {}
+    if recruiter:
+        query["recruiter"] = recruiter
+    if candidate:
+        id_match = re.fullmatch(r"[0-9a-fA-F]{24}", candidate)
+        if id_match:
+            query["$or"] = [
+                {"candidate_id": candidate},
+                {"candidate_name": re.compile(re.escape(candidate), re.IGNORECASE)},
+            ]
+        else:
+            query["candidate_name"] = re.compile(re.escape(candidate), re.IGNORECASE)
+
+    max_limit = min(max(limit, 1), 1000)
+    docs = (
+        get_status_logs_collection()
+        .find(query)
+        .sort("at", -1)
+        .limit(max_limit)
+    )
+    logs = []
+    for doc in docs:
+        logs.append(
+            {
+                "id": str(doc["_id"]),
+                "candidate_id": doc.get("candidate_id", ""),
+                "candidate_name": doc.get("candidate_name", ""),
+                "recruiter": doc.get("recruiter", ""),
+                "from": doc.get("from", ""),
+                "to": doc.get("to", ""),
+                "at": doc.get("at", ""),
+            }
+        )
+    return {"logs": logs, "total": len(logs)}
 
 
 @app.get("/api/candidates/export")
