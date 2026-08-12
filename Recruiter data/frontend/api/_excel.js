@@ -26,6 +26,31 @@ const COLUMN_MAP = {
   Recruiters: 'recruiter',
 }
 
+// Aliases for headers that vary between Excel exports. Keys are normalized
+// (lowercased, stripped) header names; values are the canonical DB fields.
+const COLUMN_ALIASES = {
+  date: 'date',
+  name: 'name',
+  'phone number': 'phone',
+  'email id': 'email',
+  'total experience': 'total_experience',
+  'relevant experience': 'relevant_experience',
+  skill: 'skill',
+  'notice period': 'notice_period',
+  'current location': 'current_location',
+  'preferred location': 'preferred_location',
+  location: 'preferred_location',
+  'current ctc': 'current_ctc',
+  'expected ctc': 'expected_ctc',
+  ctc: 'current_ctc',
+  ectc: 'expected_ctc',
+  education: 'education',
+  client: 'client',
+  status: 'status',
+  recruiters: 'recruiter',
+  recruiter: 'recruiter',
+}
+
 // Columns whose values we preserve as text exactly as entered in Excel.
 const TEXT_COLUMNS = new Set([
   'phone',
@@ -68,11 +93,16 @@ export function parseWorkbook(contents) {
 
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: true })
 
+  // Normalize headers: exact match first, then aliases (case/space-insensitive).
+  function mapHeader(header) {
+    return COLUMN_MAP[header] || COLUMN_ALIASES[String(header).trim().toLowerCase()] || header
+  }
+
   const records = []
   for (const row of rows) {
     const rowMap = {}
     for (const [key, value] of Object.entries(row)) {
-      rowMap[COLUMN_MAP[key] || key] = toText(value)
+      rowMap[mapHeader(key)] = toText(value)
     }
 
     const name = rowMap.name || ''

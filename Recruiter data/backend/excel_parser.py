@@ -34,6 +34,31 @@ COLUMN_MAP = {
     "Recruiters": "recruiter",
 }
 
+# Aliases for headers that vary between Excel exports. Keys are normalized
+# (lowercased, stripped) header names; values are the canonical DB fields.
+COLUMN_ALIASES = {
+    "date": "date",
+    "name": "name",
+    "phone number": "phone",
+    "email id": "email",
+    "total experience": "total_experience",
+    "relevant experience": "relevant_experience",
+    "skill": "skill",
+    "notice period": "notice_period",
+    "current location": "current_location",
+    "preferred location": "preferred_location",
+    "location": "preferred_location",
+    "current ctc": "current_ctc",
+    "expected ctc": "expected_ctc",
+    "ctc": "current_ctc",
+    "ectc": "expected_ctc",
+    "education": "education",
+    "client": "client",
+    "status": "status",
+    "recruiters": "recruiter",
+    "recruiter": "recruiter",
+}
+
 # Columns whose values we should preserve as text exactly as entered in Excel.
 TEXT_COLUMNS = {
     "phone",
@@ -70,6 +95,15 @@ def parse_workbook(contents: bytes) -> list[dict]:
     candidate name or recruiter are skipped.
     """
     df = pd.read_excel(BytesIO(contents), engine="openpyxl", dtype=str)
+
+    # Normalize headers: exact match first, then aliases (case/space-insensitive).
+    def map_header(header: str):
+        canonical = COLUMN_MAP.get(header)
+        if canonical:
+            return canonical
+        return COLUMN_ALIASES.get(str(header).strip().lower())
+
+    df = df.rename(columns=lambda h: map_header(h) or h)
 
     records: list[dict] = []
     for _, row in df.iterrows():
