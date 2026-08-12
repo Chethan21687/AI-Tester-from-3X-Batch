@@ -34,6 +34,7 @@ const STATUS_COLORS = {
   'Profile Shared,Feedback Pending': { bg: '#cffafe', fg: '#0f766e' },
   'Notice Period issue': { bg: '#fef3c7', fg: '#b45309' },
   'Awaiting AI Bot Scroes': { bg: '#f1f5f9', fg: '#475569' },
+  Duplicate: { bg: '#f1f5f9', fg: '#475569' },
 }
 const DEFAULT_STATUS = { bg: '#f1f5f9', fg: '#475569' }
 
@@ -443,6 +444,7 @@ const STATUS_OPTIONS = [
   'Profile Shared,Feedback Pending',
   'Notice Period issue',
   'Awaiting AI Bot Scroes',
+  'Duplicate',
   'No status',
 ]
 
