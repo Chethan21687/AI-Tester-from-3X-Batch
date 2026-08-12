@@ -343,7 +343,7 @@ function KpiStrip({ stats, sources, onOpenClients }) {
   const latestDate = stats.reduce((max, s) => {
     if (!s.latest_date) return max
     const d = parseDateLabel(s.latest_date)
-    return d && (!max.maxDate || d > max.maxDate) ? { value: s.latest_date, maxDate: d } : max
+    return d && (!max || !max.maxDate || d > max.maxDate) ? { value: s.latest_date, maxDate: d } : max
   }, null)?.value || ''
 
   const kpis = [
