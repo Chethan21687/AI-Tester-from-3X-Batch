@@ -1,0 +1,16 @@
+[project]
+name = "vwo-testcases-mcp"
+version = "0.1.0"
+description = "FastMCP server exposing VWO test cases as tools, resources, and prompts"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=2.2.0,<3.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "uv>=0.5.0",
+]
+
+[tool.setuptools]
+py-modules = ["server"]
