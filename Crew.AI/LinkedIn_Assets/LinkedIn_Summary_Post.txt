@@ -1,4 +1,0 @@
-Meet TestForge  the AI Test Analyst I built end-to-end 🧪
-
-As a QA professional, I know the most tedious part of testing is turning requirements into test cases by hand. So I built TestForge AI — an AI Test Analyst powered by crewAI and Groq's gpt-oss-120b: paste requirements or upload a requirements document, and it writes structured test cases with preconditions, steps, and expected results in seconds. I wrapped it in a Streamlit app where testers review everything in a clean table, mark each case Pass/Fail/Blocked, and export the suite as a Word document. Building it meant owning the full journey — integrating LLMs, debugging environment and token limits, and refining the UI from real usage. The result is a complete tool: requirements file in, export-ready test suite out. If you're looking for someone who pairs QA expertise with hands-on AI and Python development, let's connect. #QA #SoftwareTesting #TestAutomation #AI #Python #CrewAI #GenAI
-
