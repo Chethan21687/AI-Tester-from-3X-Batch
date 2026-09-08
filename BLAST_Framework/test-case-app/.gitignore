@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vercel/
+*.log
+backend/settings.json
+frontend/screenshot_*.png
+frontend/shot.mjs
+frontend/install.log
+
+.vercel
