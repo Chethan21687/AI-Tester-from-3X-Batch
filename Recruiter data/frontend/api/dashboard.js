@@ -6,7 +6,7 @@ import { parseDateParts } from './_helpers.js'
 
 // Final decision buckets mapped from candidate status.
 const DECISION_MAP = [
-  ['Hired', ['Hired']],
+  ['Hired', ['Hired', 'Joined']],
   ['Candidate in Process', ['L1 Scheduled', 'Screening Scheduled', 'Profile Shared,Feedback Pending', 'Profile Shared']],
   ['Candidate Refusal', ['Screening Reject']],
   ['No decision', ['L1 Yet to schedule', 'Screening', 'Awaiting AI Bot Scroes', 'Notice Period issue', '']],
@@ -18,7 +18,7 @@ const MONTH_MAP = {
 }
 
 function stageOf(status) {
-  if (status === 'Hired') return 'Hired'
+  if (status === 'Hired' || status === 'Joined') return 'Hired'
   if (status === 'Profile Shared' || status === 'Profile Shared,Feedback Pending') return 'Sent to Manager'
   if (status === 'L1 Scheduled' || status === 'Screening Scheduled' || status === 'L1 Yet to schedule') return 'Interviews'
   return 'Received Application'
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
   const monthly = Array.from({ length: 12 }, (_, i) => ({ month: String(i + 1), count: monthCounts[i + 1] }))
 
   // Vacancy stats: totals derived from candidates.
-  const hired = statusCounts.Hired || 0
+  const hired = (statusCounts.Hired || 0) + (statusCounts.Joined || 0)
   const rejected = statusCounts['Screening Reject'] || 0
   const active = total - hired
   const fillRate = total ? Math.round((hired / total) * 100) : 0
